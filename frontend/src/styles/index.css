@@ -1,0 +1,154 @@
+/* 全局样式 - 小红书风格社交平台 */
+@import './design-tokens.css';
+
+/* Element Plus 组件全局覆盖 - 小红书风格 */
+:root {
+  /* 覆盖 Element Plus 主题色 */
+  --el-color-primary: #FF2442;
+  --el-color-primary-light-3: #FF4D5A;
+  --el-color-primary-light-5: #FF6B6B;
+  --el-color-primary-light-7: #FF8A8A;
+  --el-color-primary-light-9: #FFAAAA;
+  --el-color-primary-dark-2: #CC1D35;
+  
+  /* 覆盖 Element Plus 圆角 */
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 4px;
+  --el-border-radius-large: 12px;
+  
+  /* 覆盖 Element Plus 字体 */
+  --el-font-size-base: 14px;
+  
+  /* 补充变量 - 与 variables.css 兼容 */
+  --bg-input: var(--color-bg-secondary);
+  --color-primary-alpha-10: rgba(255, 36, 66, 0.1);
+  --color-primary-alpha-20: rgba(255, 36, 66, 0.2);
+}
+
+/* 按钮样式覆盖 */
+.el-button {
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all var(--transition-normal);
+}
+
+.el-button--primary {
+  background: var(--color-primary);
+  border: none;
+}
+
+.el-button--primary:hover {
+  background: var(--color-primary-light);
+}
+
+/* 输入框样式覆盖 */
+.el-input__wrapper {
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  background: var(--bg-input);
+  transition: all var(--transition-normal);
+}
+
+.el-input__wrapper:hover {
+  box-shadow: 0 0 0 2px var(--color-primary-alpha-10);
+}
+
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 2px var(--color-primary-alpha-10);
+}
+
+/* 卡片样式覆盖 */
+.el-card {
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 消息提示覆盖 */
+.el-message {
+  border-radius: var(--radius-md);
+  border: none;
+  box-shadow: var(--shadow-md);
+}
+
+/* 下拉菜单覆盖 */
+.el-dropdown-menu {
+  border-radius: var(--radius-sm);
+  border: none;
+  box-shadow: var(--shadow-md);
+}
+
+/* 标签页覆盖 */
+.el-tabs__item {
+  font-weight: 500;
+}
+
+.el-tabs__item.is-active {
+  color: var(--color-primary);
+}
+
+.el-tabs__active-bar {
+  background: var(--color-primary);
+}
+
+/* 加载动画 */
+.loading-spinner {
+  color: var(--color-primary);
+}
+
+/* 骨架屏 */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 25%,
+    var(--color-bg-secondary) 50%,
+    var(--color-border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* 页面切换动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 卡片悬浮效果 */
+.card-hover {
+  transition: all var(--transition-normal);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  :root {
+    --el-font-size-base: 13px;
+  }
+}
+
+/* 移动端输入框防缩放 */
+@media (max-width: 480px) {
+  input, textarea, .el-input__inner {
+    font-size: 16px !important;
+  }
+}

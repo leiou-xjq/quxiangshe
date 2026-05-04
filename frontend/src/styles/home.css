@@ -1,0 +1,147 @@
+/* 首页样式 - 小红书风格信息流布局 */
+@import '../styles/design-tokens.css';
+
+.home-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-bottom: var(--spacing-xl);
+}
+
+/* ==================== 信息流标题区域 ==================== */
+.feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-lg);
+  padding: 0 var(--spacing-xs);
+}
+
+.feed-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.feed-tabs {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.feed-tab {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: var(--spacing-xs) 0;
+  position: relative;
+  transition: color var(--transition-fast);
+}
+
+.feed-tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-primary);
+  transform: scaleX(0);
+  transition: transform var(--transition-fast);
+}
+
+.feed-tab.active {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.feed-tab.active::after {
+  transform: scaleX(1);
+}
+
+.feed-tab:hover:not(.active) {
+  color: var(--color-text-secondary);
+}
+
+/* 红点提示 */
+.red-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ==================== 加载状态 ==================== */
+.loading-wrap {
+  text-align: center;
+  padding: var(--spacing-3xl) 0;
+  color: var(--color-text-tertiary);
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto var(--spacing-md);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==================== 空状态 ==================== */
+.empty-wrap {
+  text-align: center;
+  padding: var(--spacing-3xl) 0;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  color: var(--color-text-tertiary);
+}
+
+.empty-wrap a {
+  color: var(--color-primary);
+}
+
+/* ==================== 加载更多 ==================== */
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-xl);
+}
+
+.load-more-btn {
+  padding: 10px 32px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-dark);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-normal);
+}
+
+.load-more-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ==================== 响应式适配 ==================== */
+@media (max-width: 600px) {
+  .home-page {
+    padding-bottom: var(--spacing-lg);
+  }
+  
+  .feed-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .feed-tabs {
+    width: 100%;
+    justify-content: space-around;
+  }
+}

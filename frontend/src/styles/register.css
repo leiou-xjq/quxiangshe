@@ -1,0 +1,313 @@
+/* 注册页面样式 - 友邻活泼风格 */
+@import '../styles/design-tokens.css';
+
+.register-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 装饰性背景 */
+.register-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.register-decoration .decoration-circle {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+}
+
+.register-decoration .circle-1 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.4) 0%, rgba(255, 159, 67, 0.2) 100%);
+  top: -150px;
+  right: -100px;
+  animation: float 8s ease-in-out infinite;
+}
+
+.register-decoration .circle-2 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.4) 0%, rgba(118, 75, 162, 0.2) 100%);
+  bottom: -100px;
+  left: -50px;
+  animation: float 10s ease-in-out infinite reverse;
+}
+
+.register-decoration .circle-3 {
+  width: 200px;
+  height: 200px;
+  background: rgba(240, 147, 251, 0.4);
+  top: 30%;
+  left: 15%;
+  animation: float 9s ease-in-out infinite;
+}
+
+.register-decoration .circle-4 {
+  width: 150px;
+  height: 150px;
+  background: rgba(255, 193, 7, 0.3);
+  bottom: 20%;
+  right: 10%;
+  animation: float 7s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.05);
+  }
+}
+
+/* 漂浮的表情emoji */
+.floating-emoji {
+  position: absolute;
+  font-size: 32px;
+  animation: emojiFloat 4s ease-in-out infinite;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+}
+
+.emoji-1 {
+  top: 8%;
+  left: 15%;
+  animation-delay: 0s;
+}
+
+.emoji-2 {
+  top: 25%;
+  right: 12%;
+  animation-delay: 1.5s;
+}
+
+.emoji-3 {
+  bottom: 30%;
+  left: 8%;
+  animation-delay: 2.5s;
+}
+
+.emoji-4 {
+  bottom: 10%;
+  right: 20%;
+  animation-delay: 3.5s;
+}
+
+@keyframes emojiFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(5deg);
+  }
+  50% {
+    transform: translateY(0) rotate(0deg);
+  }
+  75% {
+    transform: translateY(10px) rotate(-5deg);
+  }
+}
+
+/* 注册卡片 */
+.register-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 36px 32px 32px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
+  animation: cardIn 0.5s ease-out;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 头部 */
+.register-header {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.register-header .logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 32px;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(135deg, #667eea, #f093fb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.register-header .logo-icon {
+  font-size: 36px;
+  -webkit-text-fill-color: initial;
+}
+
+.register-header .logo-text {
+  letter-spacing: 4px;
+}
+
+.register-header .subtitle {
+  font-size: var(--font-size-base);
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: var(--spacing-md);
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  display: inline-block;
+}
+
+/* 表单样式 */
+.register-form {
+  margin-top: var(--spacing-xs);
+}
+
+.register-form :deep(.el-form-item) {
+  margin-bottom: var(--spacing-md);
+}
+
+.register-form :deep(.el-input__wrapper) {
+  background: var(--color-bg-secondary);
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  padding: 12px 14px;
+  transition: all var(--transition-normal);
+}
+
+.register-form :deep(.el-input__wrapper:hover) {
+  background: var(--color-bg-tertiary);
+}
+
+.register-form :deep(.el-input__wrapper.is-focus) {
+  background: var(--color-bg);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2), var(--shadow-sm);
+}
+
+.register-form :deep(.el-input__inner) {
+  font-size: var(--font-size-base);
+}
+
+.register-form :deep(.el-input__inner::placeholder) {
+  color: var(--color-text-disabled);
+}
+
+.register-form :deep(.el-input__prefix) {
+  color: var(--color-text-tertiary);
+}
+
+/* 注册模式切换 */
+.register-mode-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.register-mode-group :deep(.el-radio-button__inner) {
+  border-radius: var(--radius-full) !important;
+  padding: 8px 16px;
+}
+
+/* 注册类型切换 */
+.register-type-group {
+  display: flex;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-full);
+  padding: 4px;
+  margin-bottom: var(--spacing-lg);
+}
+
+.register-type-group :deep(.el-radio-button) {
+  flex: 1;
+}
+
+.register-type-group :deep(.el-radio-button__inner) {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-normal);
+}
+
+.register-type-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background: var(--color-bg);
+  color: #667eea;
+  font-weight: var(--font-weight-medium);
+}
+
+/* 注册按钮 */
+.register-btn {
+  width: 100%;
+  height: 44px;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: var(--radius-full);
+  color: white;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.register-btn:hover {
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
+}
+
+/* 底部链接 */
+.register-footer {
+  text-align: center;
+  margin-top: var(--spacing-xl);
+  font-size: var(--font-size-sm);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.register-footer a {
+  color: #ffd700;
+  font-weight: var(--font-weight-medium);
+  margin-left: var(--spacing-sm);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.register-footer a:hover {
+  text-decoration: underline;
+}
+
+/* 响应式适配 */
+@media (max-width: 480px) {
+  .register-card {
+    margin: var(--spacing-md);
+    padding: 28px 20px;
+  }
+
+  .register-header .logo {
+    font-size: 26px;
+  }
+}

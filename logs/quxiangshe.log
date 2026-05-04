@@ -1,0 +1,43 @@
+2026-05-03 08:29:57.224 [background-preinit] INFO  org.hibernate.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2026-05-03 08:29:57.362 [main] INFO  com.quxiangshe.backend.QuxiangsheApplication - Starting QuxiangsheApplication using Java 17.0.3.1 with PID 9740 (D:\quxiansghe-project\backend\target\quxiangshe-backend-1.0.0.jar started by 28655 in D:\quxiansghe-project)
+2026-05-03 08:29:57.363 [main] DEBUG com.quxiangshe.backend.QuxiangsheApplication - Running with Spring Boot v3.2.1, Spring v6.1.2
+2026-05-03 08:29:57.364 [main] INFO  com.quxiangshe.backend.QuxiangsheApplication - No active profile set, falling back to 1 default profile: "default"
+2026-05-03 08:29:59.947 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-05-03 08:29:59.956 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Bootstrapping Spring Data Elasticsearch repositories in DEFAULT mode.
+2026-05-03 08:30:00.010 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 43 ms. Found 0 Elasticsearch repository interfaces.
+2026-05-03 08:30:00.025 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-05-03 08:30:00.027 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Bootstrapping Spring Data Reactive Elasticsearch repositories in DEFAULT mode.
+2026-05-03 08:30:00.037 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 10 ms. Found 0 Reactive Elasticsearch repository interfaces.
+2026-05-03 08:30:00.057 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-05-03 08:30:00.059 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-05-03 08:30:00.094 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 5 ms. Found 0 Redis repository interfaces.
+2026-05-03 08:30:02.733 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2026-05-03 08:30:02.753 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-05-03 08:30:02.776 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2026-05-03 08:30:02.777 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.17]
+2026-05-03 08:30:02.860 [main] INFO  o.a.c.c.ContainerBase.[Tomcat].[localhost].[/api] - Initializing Spring embedded WebApplicationContext
+2026-05-03 08:30:02.862 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 5329 ms
+2026-05-03 08:30:03.453 [main] DEBUG c.q.backend.security.JwtAuthenticationFilter - Filter 'jwtAuthenticationFilter' configured for use
+2026-05-03 08:30:03.714 [main] INFO  org.redisson.Version - Redisson 3.23.0
+2026-05-03 08:30:04.592 [redisson-netty-2-5] INFO  o.r.connection.pool.MasterPubSubConnectionPool - 1 connections initialized for localhost/127.0.0.1:6379
+2026-05-03 08:30:04.593 [redisson-netty-2-6] INFO  org.redisson.connection.pool.MasterConnectionPool - 1 connections initialized for localhost/127.0.0.1:6379
+2026-05-03 08:30:11.020 [main] INFO  o.s.b.actuate.endpoint.web.EndpointLinksResolver - Exposing 1 endpoint(s) beneath base path '/actuator'
+2026-05-03 08:30:11.158 [main] INFO  o.s.security.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@2a64cb1f, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@3644d12a, org.springframework.security.web.context.SecurityContextHolderFilter@3b30409, org.springframework.security.web.header.HeaderWriterFilter@5acbef42, org.springframework.web.filter.CorsFilter@76aab1e3, org.springframework.security.web.authentication.logout.LogoutFilter@5713e261, com.quxiangshe.backend.security.JwtAuthenticationFilter@73852720, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@5a07088b, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@34b56a5a, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@4f9e32f2, org.springframework.security.web.session.SessionManagementFilter@57b4fc1e, org.springframework.security.web.access.ExceptionTranslationFilter@23c3f787, org.springframework.security.web.access.intercept.AuthorizationFilter@6d985720]
+2026-05-03 08:30:12.704 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2026-05-03 08:30:12.725 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/api'
+2026-05-03 08:30:12.729 [main] INFO  o.s.a.rabbit.connection.CachingConnectionFactory - Attempting to connect to: [localhost:5672]
+2026-05-03 08:30:12.835 [main] INFO  o.s.a.rabbit.connection.CachingConnectionFactory - Created new connection: rabbitConnectionFactory#665c79a2:0/SimpleConnection@1aa9635c [delegate=amqp://guest@127.0.0.1:5672/, localPort=62771]
+2026-05-03 08:30:13.109 [main] INFO  com.quxiangshe.backend.QuxiangsheApplication - Started QuxiangsheApplication in 17.019 seconds (process running for 19.344)
+2026-05-03 08:30:13.260 [main] INFO  c.q.backend.component.FeedDataMigrationRunner - 开始迁移Feed流Redis数据...
+2026-05-03 08:30:14.704 [scheduling-1] DEBUG c.q.backend.scheduler.MonitoringAlertScheduler - 开始检查任务健康状态...
+2026-05-03 08:30:14.753 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-03 08:26:11, 4分钟前
+2026-05-03 08:30:14.754 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 清理任务尚未执行过（可能未到执行时间）
+2026-05-03 08:30:14.755 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-03 08:30:14.756 [scheduling-1] DEBUG c.q.backend.scheduler.MonitoringAlertScheduler - 任务健康检查完成
+2026-05-03 08:30:14.756 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-03 08:30:16.033 [scheduling-1] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-05-03 08:30:16.711 [scheduling-1] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@361084ed
+2026-05-03 08:30:16.715 [scheduling-1] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-05-03 08:30:21.352 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时6595ms
+2026-05-03 08:30:21.358 [scheduling-1] DEBUG c.quxiangshe.backend.scheduler.AntiCheatScheduler - 开始异常检测...
+2026-05-03 08:30:29.741 [main] INFO  c.q.backend.component.FeedDataMigrationRunner - Feed流Redis数据迁移完成: 迁移0条, 耗时16480ms

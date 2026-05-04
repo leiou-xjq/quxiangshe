@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.quxiangshe.backend.mapper.NoteCommentMapper">
+    
+    <insert id="batchInsert">
+        INSERT INTO note_comment (note_id, user_id, parent_id, root_id, content, like_count, status, created_at, updated_at)
+        VALUES
+        <foreach collection="list" item="c" separator=",">
+            (#{c.noteId}, #{c.userId}, #{c.parentId}, #{c.rootId}, #{c.content}, #{c.likeCount}, #{c.status}, #{c.createdAt}, #{c.updatedAt})
+        </foreach>
+    </insert>
+    
+</mapper>

@@ -1,0 +1,322 @@
+/* 小蓝书 - 全局CSS变量与主题配置 */
+/* 男性垂直社区设计系统 */
+
+/* ==================== 响应式断点 ==================== */
+:root {
+  /* 断点定义 */
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+  
+  /* ==================== 主色调 ==================== */
+  /* 微博蓝色系 */
+  --color-primary: #1890FF;
+  --color-primary-light: #40A9FF;
+  --color-primary-dark: #096DD9;
+  --color-primary-alpha-10: rgba(24, 144, 255, 0.1);
+  --color-primary-alpha-20: rgba(24, 144, 255, 0.2);
+  
+  /* 辅助色 */
+  --color-success: #52C41A;
+  --color-warning: #FAAD14;
+  --color-error: #FF4D4F;
+  --color-info: #1890FF;
+  
+  /* ==================== 灰度色系 ==================== */
+  --color-white: #FFFFFF;
+  --color-gray-50: #FAFAFA;
+  --color-gray-100: #F5F5F5;
+  --color-gray-200: #EEEEEE;
+  --color-gray-300: #E0E0E0;
+  --color-gray-400: #BDBDBD;
+  --color-gray-500: #9E9E9E;
+  --color-gray-600: #757575;
+  --color-gray-700: #616161;
+  --color-gray-800: #424242;
+  --color-gray-900: #212121;
+  
+  /* ==================== 背景色 ==================== */
+  --bg-page: #F2F2F2;
+  --bg-card: #FFFFFF;
+  --bg-modal: #FFFFFF;
+  --bg-input: #F5F5F5;
+  --bg-hover: #F2F2F2;
+  
+  /* ==================== 文字色 ==================== */
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --text-placeholder: #BBBBBB;
+  --text-disabled: #CCCCCC;
+  
+  /* ==================== 边框色 ==================== */
+  --border-color: #EFEFEF;
+  --border-light: #F0F0F0;
+  
+  /* ==================== 阴影 ==================== */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-hover: 0 12px 40px rgba(24, 144, 255, 0.15);
+  
+  /* ==================== 间距 ==================== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+  
+  /* ==================== 圆角 ==================== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  
+  /* ==================== 过渡 ==================== */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+  
+  /* ==================== 层级 ==================== */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  
+  /* ==================== 字号 ==================== */
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  
+  /* ==================== 行高 ==================== */
+  --line-height-tight: 1.3;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.8;
+}
+
+/* ==================== 全局重置 ==================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 
+                'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-page);
+  min-height: 100vh;
+}
+
+/* ==================== 滚动条美化 ==================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gray-300);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-400);
+}
+
+/* ==================== 链接样式 ==================== */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-dark);
+}
+
+/* ==================== 选中文本样式 ==================== */
+::selection {
+  background: var(--color-primary-alpha-20);
+  color: var(--text-primary);
+}
+
+/* ==================== 图片自适应 ==================== */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ==================== 骨架屏动画 ==================== */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-gray-200) 25%,
+    var(--color-gray-100) 50%,
+    var(--color-gray-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ==================== 卡片基础样式 ==================== */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* ==================== 按钮基础样式 ==================== */
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* ==================== 输入框基础样式 ==================== */
+.input-field {
+  background: var(--bg-input);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: var(--font-size-base);
+  transition: all var(--transition-normal);
+}
+
+.input-field:focus {
+  background: var(--color-white);
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-alpha-10);
+}
+
+/* ==================== 页面切换动画 ==================== */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* ==================== 浮动动画 ==================== */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ==================== 脉冲动画 ==================== */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse-animation {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ==================== 响应式工具 ==================== */
+/* 移动端 */
+@media (max-width: 768px) {
+  :root {
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --font-size-base: 14px;
+    --font-size-lg: 15px;
+  }
+  
+  /* 移动端隐藏PC端元素 */
+  .pc-only { display: none !important; }
+}
+
+/* PC端 */
+@media (min-width: 769px) {
+  /* 移动端隐藏元素 */
+  .mobile-only { display: none !important; }
+}
+
+/* 平板适配 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --spacing-md: 14px;
+    --spacing-lg: 20px;
+  }
+}

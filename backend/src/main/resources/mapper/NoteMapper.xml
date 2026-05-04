@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.quxiangshe.backend.mapper.NoteMapper">
+    
+    <!-- 批量插入笔记 -->
+    <insert id="batchInsert">
+        INSERT INTO note (user_id, title, content, images, tags, location, stable_random, 
+            status, like_count, comment_count, favorite_count, view_count, forward_count) VALUES
+        <foreach collection="list" item="note" separator=",">
+            (#{note.userId}, #{note.title}, #{note.content}, #{note.images}, #{note.tags}, 
+             #{note.location}, #{note.stableRandom}, #{note.status}, #{note.likeCount}, 
+             #{note.commentCount}, #{note.favoriteCount}, #{note.viewCount}, #{note.forwardCount})
+        </foreach>
+    </insert>
+    
+</mapper>

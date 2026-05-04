@@ -1,0 +1,273 @@
+/* 个人主页样式 - 小红书风格 */
+@import '../styles/design-tokens.css';
+
+.profile-page {
+  min-height: 100vh;
+  background: var(--color-bg-secondary);
+}
+
+/* 顶部导航栏 */
+.profile-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+.profile-nav :deep(.el-button) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.nav-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+/* 头部背景 */
+.profile-header {
+  background: var(--gradient-primary);
+  height: 60px;
+}
+
+/* 用户信息卡片 */
+.profile-card {
+  background: var(--color-bg);
+  margin: -20px var(--spacing-lg) var(--spacing-md);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-user {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.profile-avatar-wrap {
+  flex-shrink: 0;
+}
+
+.profile-avatar-wrap :deep(.el-avatar) {
+  width: var(--avatar-xl);
+  height: var(--avatar-xl);
+  border: 3px solid var(--color-bg);
+  box-shadow: var(--shadow-md);
+}
+
+.profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.profile-username {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+.profile-bio {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.profile-actions :deep(.el-button) {
+  width: 80px;
+  border-radius: var(--radius-full);
+}
+
+/* 统计行 */
+.profile-stats {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-2xl);
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.profile-stat-item {
+  text-align: center;
+  cursor: pointer;
+  min-width: 60px;
+}
+
+.profile-stat-item:hover .profile-stat-value {
+  color: var(--color-primary);
+}
+
+.profile-stat-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.profile-stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+/* Tab卡片 */
+.profile-tabs-card {
+  margin: 0 var(--spacing-lg) var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-tabs-card :deep(.el-tabs__header) {
+  padding: 0 var(--spacing-lg);
+  margin: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.profile-tabs-card :deep(.el-tabs__content) {
+  padding: var(--spacing-lg);
+}
+
+/* 内容列表 */
+.content-list {
+  min-height: 200px;
+}
+
+.content-item {
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.content-item:hover .item-title {
+  color: var(--color-primary);
+}
+
+.content-item:last-child {
+  border-bottom: none;
+}
+
+.item-title {
+  font-size: var(--font-size-md);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-xs);
+  flex: 1;
+}
+
+.item-meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+/* 用户项（粉丝列表） */
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.user-item:last-child {
+  border-bottom: none;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.user-bio {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  margin-top: var(--spacing-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.load-more {
+  text-align: center;
+  padding: var(--spacing-md) 0;
+}
+
+.empty-tip {
+  text-align: center;
+  padding: var(--spacing-3xl) 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .profile-header {
+    height: 40px;
+  }
+  
+  .profile-card {
+    margin: -15px var(--spacing-sm) var(--spacing-sm);
+    padding: var(--spacing-md);
+  }
+  
+  .profile-user {
+    flex-wrap: wrap;
+  }
+  
+  .profile-avatar-wrap :deep(.el-avatar) {
+    width: var(--avatar-lg);
+    height: var(--avatar-lg);
+  }
+  
+  .profile-actions {
+    flex-direction: row;
+    width: 100%;
+    margin-top: var(--spacing-md);
+  }
+  
+  .profile-actions :deep(.el-button) {
+    flex: 1;
+  }
+  
+  .profile-stats {
+    gap: var(--spacing-xl);
+  }
+  
+  .profile-tabs-card {
+    margin: 0 var(--spacing-sm) var(--spacing-sm);
+  }
+}

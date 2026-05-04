@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.quxiangshe.backend.mapper.UserActivityMapper">
+    
+    <select id="selectByUserId" resultType="UserActivity">
+        SELECT * FROM user_activity WHERE user_id = #{userId}
+    </select>
+    
+    <select id="selectByUserIds" resultType="UserActivity">
+        SELECT * FROM user_activity WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </select>
+    
+    <update id="resetTodayInteractionCount">
+        UPDATE user_activity 
+        SET today_interaction_count = 0, 
+            today_interaction_date = CURDATE()
+        WHERE today_interaction_date != CURDATE() OR today_interaction_date IS NULL
+    </update>
+    
+    <update id="updateLoginDays">
+        UPDATE user_activity 
+        SET login_days = #{loginDays}, 
+            last_login_date = CURDATE(),
+            activity_score = #{loginDays} * 5 + LEAST(interaction_count * 3, 200) + 5
+        WHERE user_id = #{userId}
+    </update>
+    
+    <update id="updateInteractionCount">
+        UPDATE user_activity 
+        SET interaction_count = #{interactionCount},
+            today_interaction_count = today_interaction_count + 1,
+            today_interaction_date = CURDATE(),
+            activity_score = login_days * 5 + LEAST(#{interactionCount} * 3, 200) + 5
+        WHERE user_id = #{userId}
+    </update>
+    
+    <!-- 批量插入用户活跃度 -->
+    <insert id="batchInsert">
+        INSERT INTO user_activity (user_id, login_days, interaction_count, activity_score, 
+            last_login_date, today_interaction_count, today_interaction_date) VALUES
+        <foreach collection="list" item="activity" separator=",">
+            (#{activity.userId}, #{activity.loginDays}, #{activity.interactionCount}, 
+             #{activity.activityScore}, #{activity.lastLoginDate}, #{activity.todayInteractionCount}, 
+             #{activity.todayInteractionDate})
+        </foreach>
+    </insert>
+    
+    <!-- 批量更新活跃度分数（使用CASE WHEN，单SQL） -->
+    <update id="batchUpdateScore">
+        UPDATE user_activity 
+        SET activity_score = CASE user_id
+            <foreach collection="list" item="activity">
+                WHEN #{activity.userId} THEN #{activity.activityScore}
+            </foreach>
+        END
+        WHERE user_id IN
+        <foreach collection="list" item="activity" open="(" separator="," close=")">
+            #{activity.userId}
+        </foreach>
+    </update>
+    
+    <!-- 查询今日有互动的用户 -->
+    <select id="selectTodayActiveUsers" resultType="UserActivity">
+        SELECT * FROM user_activity 
+        WHERE today_interaction_date = #{date}
+        AND today_interaction_count > 0
+    </select>
+    
+</mapper>
