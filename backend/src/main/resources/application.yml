@@ -87,7 +87,7 @@ mybatis-plus:
 
 # JWT配置
 jwt:
-  secret: ${JWT_SECRET:lixiang-jwt-secret-key-2024-campus-social-platform}
+  secret: ${JWT_SECRET:}
   access-token-validity: ${JWT_ACCESS_VALIDITY:900}
   refresh-token-validity: ${JWT_REFRESH_VALIDITY:604800}
   token-prefix: "Bearer "
@@ -143,10 +143,10 @@ mail:
 oss:
   aliyun:
     endpoint: ${OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
-    accessKeyId: ${OSS_ACCESS_KEY_ID:LTAI5t6iXLJo6Xofnzv5xeR9}
-    accessKeySecret: ${OSS_ACCESS_KEY_SECRET:IwPVQhnhS44Uae4nDnUe5TcriIid0d}
+    accessKeyId: ${OSS_ACCESS_KEY_ID:}
+    accessKeySecret: ${OSS_ACCESS_KEY_SECRET:}
     bucketName: ${OSS_BUCKET_NAME:quxiangshe-img}
-    enabled: ${OSS_ENABLED:true}
+    enabled: ${OSS_ENABLED:false}
   image:
     compress-enabled: true
     thumbnail-enabled: true
@@ -164,8 +164,8 @@ review:
   async-enabled: ${REVIEW_ASYNC_ENABLED:true}
   value-review-enabled: ${VALUE_REVIEW_ENABLED:true}
   doubao:
-    api-key: ark-8f29c9b7-1a77-493e-8b24-1e6c5ddf6655-4a2e0
-    endpoint: ep-20260428080756-pbltx
+    api-key: ${DOUBAO_API_KEY:}
+    endpoint: ${DOUBAO_ENDPOINT:ep-20260428080756-pbltx}
     base-url: ${DOUBAO_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
     model: ${DOUBAO_MODEL:doubao-1-5-lite-32k-250115}
     timeout: 30000
@@ -213,7 +213,7 @@ logging:
     max-history: 30
 
 pusher:
-  app-id: 2149929
-  key: 5039ccc58e39370fb8e0
-  secret: 8f7005715b9c10d3b6f0
-  cluster: ap3
+  app-id: ${PUSHER_APP_ID:}
+  key: ${PUSHER_KEY:}
+  secret: ${PUSHER_SECRET:}
+  cluster: ${PUSHER_CLUSTER:ap3}
