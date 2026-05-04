@@ -1,0 +1,153 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: quxiangshe-backend
+
+
+  # ==================== MySQL数据源配置 ====================
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/quxiangshe?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: root
+    password:
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: HikariCP-Pool
+
+  # ==================== Redis配置 ====================
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 100
+          max-idle: 20
+          min-idle: 5
+          max-wait: 3000ms
+
+  # ==================== RabbitMQ配置 ====================
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 5
+        max-concurrency: 20
+
+  # ==================== Spring AI配置 ====================
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        model: llama3
+        options:
+          temperature: 0.7
+
+# ==================== MyBatis Plus配置 ====================
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.quxiangshe.**.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+    cache-enabled: false
+    jdbc-type-for-null: null
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ==================== JWT配置 ====================
+jwt:
+  secret: quxiangshe-secret-key-change-in-production-2024
+  access-token-validity: 1800
+  refresh-token-validity: 604800
+
+# ==================== Feed流配置 ====================
+feed:
+  inbox-size: 200
+  inbox-ttl: 7
+  push-threshold: 1000
+
+# ==================== 限流配置 ====================
+ratelimit:
+  window-size: 60
+  max-request: 1000
+  dedup-window: 5
+  config:
+    # 是否启用本地降级限流（Redis不可用时使用Caffeine兜底）
+    enable-local-fallback: true
+    # 本地缓存过期时间（分钟）
+    local-cache-expire-minutes: 10
+    # 本地缓存最大条目数
+    local-cache-max-size: 10000
+    # 是否启用Redis持久化（服务重启后恢复数据）
+    enable-persistence: true
+    # 持久化间隔（秒）
+    persistence-interval-seconds: 30
+    # Redis恢复时是否同步数据
+    sync-on-redis-recover: true
+    # 持久化Key前缀
+    persistence-key-prefix: "ratelimit:persistence:"
+    # 持久化批量大小
+    persistence-batch-size: 100
+
+# ==================== 登录限流配置 ====================
+login-ratelimit:
+  window-size: 1        # 滑动窗口大小（秒）
+  max-request: 1000    # 每秒最大登录请求数
+
+# ==================== 日志配置 ====================
+logging:
+  level:
+    root: INFO
+    com.quxiangshe: DEBUG
+    com.quxiangshe.auth: DEBUG
+    com.quxiangshe.feed: DEBUG
+    com.quxiangshe.comment: DEBUG
+    com.quxiangshe.ai: DEBUG
+    com.quxiangshe.sync: DEBUG
+    com.alibaba.otter.canal: INFO
+    org.springframework.security: DEBUG
+    org.springframework.amqp: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/quxiangshe.log
+    max-size: 100MB
+    max-history: 30
+
+# ==================== Canal配置 ====================
+# 当前使用应用内同步（RabbitMQ + 异步），Canal暂时禁用
+# 如需启用Canal实时同步，需要部署Canal Server并下载相关jar包
+# Canal部署文档: docs/CANAL_DEPLOY.md
+canal:
+  enabled: false
+  server: localhost:11111
+  destination: quxiangshe
+  username: canal
+  password: canal
+  tables: t_note,user
+  batch-size: 5
+  threads: 2

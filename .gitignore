@@ -1,0 +1,30 @@
+# ==================== 通用 ====================
+.DS_Store
+Thumbs.db
+*.log
+logs/
+
+# ==================== 前端 (quxiangshe-web) ====================
+node_modules/
+dist/
+*.local
+.env
+.env.local
+.vscode/
+.idea/
+
+# ==================== 后端 (quxiangshe) ====================
+target/
+.mvn/
+mvnw
+mvnw.cmd
+hs_err_pid*.log
+replay_pid*.log
+
+# ==================== IDE ====================
+*.iml
+*.iws
+*.ipr
+.settings/
+.classpath
+.project
