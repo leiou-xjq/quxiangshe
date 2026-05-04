@@ -2558,3 +2558,343 @@
 2026-05-04 10:05:09.446 [org.springframework.amqp.rabbit.RabbitListenerEndpointContainer#3-11] INFO  o.s.a.r.listener.SimpleMessageListenerContainer - Successfully waited for workers to finish.
 2026-05-04 10:05:09.488 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
 2026-05-04 10:05:09.494 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2026-05-04 10:06:22.858 [background-preinit] INFO  org.hibernate.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2026-05-04 10:06:22.924 [main] INFO  com.quxiangshe.backend.QuxiangsheApplication - Starting QuxiangsheApplication using Java 17.0.14 with PID 16444 (D:\quxiansghe-project\backend\target\classes started by 28655 in D:\quxiansghe-project\backend)
+2026-05-04 10:06:22.926 [main] INFO  com.quxiangshe.backend.QuxiangsheApplication - No active profile set, falling back to 1 default profile: "default"
+2026-05-04 10:06:24.418 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Multiple Spring Data modules found, entering strict repository configuration mode
+2026-05-04 10:06:24.422 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-05-04 10:06:24.465 [main] INFO  o.s.d.r.config.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 27 ms. Found 0 Redis repository interfaces.
+2026-05-04 10:06:25.801 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2026-05-04 10:06:25.813 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2026-05-04 10:06:25.815 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2026-05-04 10:06:25.816 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.17]
+2026-05-04 10:06:25.892 [main] INFO  o.a.c.c.ContainerBase.[Tomcat].[localhost].[/api] - Initializing Spring embedded WebApplicationContext
+2026-05-04 10:06:25.894 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 2910 ms
+2026-05-04 10:06:26.417 [main] INFO  org.redisson.Version - Redisson 3.23.0
+2026-05-04 10:06:26.882 [redisson-netty-2-5] INFO  o.r.connection.pool.MasterPubSubConnectionPool - 1 connections initialized for localhost/127.0.0.1:6379
+2026-05-04 10:06:26.882 [redisson-netty-2-6] INFO  org.redisson.connection.pool.MasterConnectionPool - 1 connections initialized for localhost/127.0.0.1:6379
+2026-05-04 10:06:29.398 [main] INFO  o.s.b.a.web.servlet.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2026-05-04 10:06:30.645 [main] INFO  o.s.b.actuate.endpoint.web.EndpointLinksResolver - Exposing 1 endpoint(s) beneath base path '/actuator'
+2026-05-04 10:06:30.759 [main] INFO  o.s.security.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@2a6b6f4, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@11636d43, org.springframework.security.web.context.SecurityContextHolderFilter@3bf31f3e, org.springframework.security.web.header.HeaderWriterFilter@2493f9a8, org.springframework.web.filter.CorsFilter@753b6846, org.springframework.security.web.authentication.logout.LogoutFilter@7ddd5715, com.quxiangshe.backend.security.JwtAuthenticationFilter@df432ec, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@295e9aef, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@12e8c5c4, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@15961527, org.springframework.security.web.session.SessionManagementFilter@6fa98e98, org.springframework.security.web.access.ExceptionTranslationFilter@cede70a, org.springframework.security.web.access.intercept.AuthorizationFilter@450b99f2]
+2026-05-04 10:06:30.770 [main] INFO  o.s.security.web.DefaultSecurityFilterChain - Will secure Or [Mvc [pattern='/ws/**']] with [org.springframework.security.web.session.DisableEncodeUrlFilter@73611fbb, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@3d0f2154, org.springframework.security.web.context.SecurityContextHolderFilter@22bf4d9d, org.springframework.security.web.header.HeaderWriterFilter@3bde85b0, org.springframework.web.filter.CorsFilter@8374911, org.springframework.security.web.authentication.logout.LogoutFilter@4a609803, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@9930ff6, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@5d571179, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@106dee26, org.springframework.security.web.access.ExceptionTranslationFilter@38ed9fb2, org.springframework.security.web.access.intercept.AuthorizationFilter@3ea4dcc5]
+2026-05-04 10:06:31.920 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2026-05-04 10:06:31.934 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/api'
+2026-05-04 10:06:31.937 [main] INFO  o.s.a.rabbit.connection.CachingConnectionFactory - Attempting to connect to: [localhost:5672]
+2026-05-04 10:06:32.007 [main] INFO  o.s.a.rabbit.connection.CachingConnectionFactory - Created new connection: rabbitConnectionFactory#55f4ec04:0/SimpleConnection@65d28ad4 [delegate=amqp://guest@127.0.0.1:5672/, localPort=54343]
+2026-05-04 10:06:32.242 [main] INFO  com.quxiangshe.backend.QuxiangsheApplication - Started QuxiangsheApplication in 9.964 seconds (process running for 10.485)
+2026-05-04 10:06:32.289 [main] INFO  c.q.backend.component.FeedDataMigrationRunner - 开始迁移Feed流Redis数据...
+2026-05-04 10:06:33.090 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:01:01, 5分钟前
+2026-05-04 10:06:33.099 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:06:33.100 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:06:33.102 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:06:33.964 [scheduling-1] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-05-04 10:06:34.166 [scheduling-1] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@30e0ec67
+2026-05-04 10:06:34.170 [scheduling-1] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-05-04 10:06:38.975 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时5872ms
+2026-05-04 10:06:41.335 [http-nio-8080-exec-1] INFO  o.a.c.c.ContainerBase.[Tomcat].[localhost].[/api] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-04 10:06:41.335 [http-nio-8080-exec-1] INFO  org.springframework.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-05-04 10:06:41.339 [http-nio-8080-exec-1] INFO  org.springframework.web.servlet.DispatcherServlet - Completed initialization in 3 ms
+2026-05-04 10:06:54.523 [main] INFO  c.q.backend.component.FeedDataMigrationRunner - Feed流Redis数据迁移完成: 迁移0条, 耗时22233ms
+2026-05-04 10:07:12.474 [http-nio-8080-exec-3] INFO  c.quxiangshe.backend.service.impl.NoteServiceImpl - 创建笔记检查: asyncReviewEnabled=true, reviewAsyncTask=com.quxiangshe.backend.task.ReviewAsyncTask@1d2aa638, review.enabled=loaded
+2026-05-04 10:07:12.481 [http-nio-8080-exec-3] INFO  c.quxiangshe.backend.service.impl.NoteServiceImpl - 发布笔记（异步审核模式）: noteId=null, status=0
+2026-05-04 10:07:12.568 [http-nio-8080-exec-3] INFO  c.q.backend.service.impl.SearchServiceImpl - 使用MySQL数据库，无需同步到ES: noteId=110
+2026-05-04 10:07:12.587 [http-nio-8080-exec-3] INFO  c.quxiangshe.backend.service.impl.NoteServiceImpl - 触发异步审核: noteId=110, authorId=200301, title=今天是2026/5/4, images=0
+2026-05-04 10:07:12.590 [review-1] INFO  com.quxiangshe.backend.task.ReviewAsyncTask - 开始异步审核: noteId=110, userId=200301, title=今天是2026/5/4, images=0
+2026-05-04 10:07:12.603 [review-1] INFO  c.q.backend.service.impl.ValueReviewService - 开始价值观审核: title=今天是2026/5/4, images=0
+2026-05-04 10:07:12.604 [review-1] INFO  c.q.backend.service.impl.ValueReviewService - 调用豆包API - model: doubao-1-5-lite-32k-250115, url: https://ark.cn-beijing.volces.com/api/v3/chat/completions, images: 0
+2026-05-04 10:07:16.984 [review-1] INFO  c.q.backend.service.impl.ValueReviewService - 价值观审核完成: status=NORMAL, violatedValues=null
+2026-05-04 10:07:16.992 [review-1] INFO  com.quxiangshe.backend.task.ReviewAsyncTask - handleReviewResult: noteId=110, result.status=NORMAL, result.passed=true, result.reason=null
+2026-05-04 10:07:17.068 [review-1] INFO  com.quxiangshe.backend.task.ReviewAsyncTask - 笔记审核通过: noteId=110, 触发Feed推送
+2026-05-04 10:07:17.069 [review-1] INFO  com.quxiangshe.backend.component.FeedPusher - 开始异步推送笔记: noteId=110, authorId=200301
+2026-05-04 10:07:17.077 [review-1] INFO  c.quxiangshe.backend.service.impl.FeedServiceImpl - 开始推送笔记: noteId=110, authorId=200301, followerCount=0
+2026-05-04 10:07:17.080 [review-1] INFO  com.quxiangshe.backend.component.FeedPusher - 异步推送笔记完成: noteId=110, authorId=200301, cost=11ms
+2026-05-04 10:07:17.082 [review-1] INFO  com.quxiangshe.backend.task.ReviewAsyncTask - 异步审核完成: noteId=110, passed=true, status=NORMAL, reason=null, cost=4491ms
+2026-05-04 10:07:17.089 [pool-3-thread-1] INFO  c.quxiangshe.backend.service.impl.FeedServiceImpl - 推送完成: noteId=110, authorId=200301, totalCost=12ms
+2026-05-04 10:07:32.247 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:06:38, 0分钟前
+2026-05-04 10:07:32.248 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:07:32.249 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:08:32.241 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:06:38, 1分钟前
+2026-05-04 10:08:32.243 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:08:32.243 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:09:32.241 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:06:38, 2分钟前
+2026-05-04 10:09:32.242 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:09:32.243 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:10:32.244 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:06:38, 3分钟前
+2026-05-04 10:10:32.245 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:10:32.246 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:11:32.959 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:06:38, 4分钟前
+2026-05-04 10:11:32.960 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:11:32.960 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:11:32.961 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:11:37.595 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4634ms
+2026-05-04 10:12:32.244 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:11:37, 0分钟前
+2026-05-04 10:12:32.245 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:12:32.246 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:13:32.243 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:11:37, 1分钟前
+2026-05-04 10:13:32.244 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:13:32.245 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:14:32.256 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:11:37, 2分钟前
+2026-05-04 10:14:32.258 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:14:32.258 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:15:32.246 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:11:37, 3分钟前
+2026-05-04 10:15:32.248 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:15:32.249 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:16:33.057 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:11:37, 4分钟前
+2026-05-04 10:16:33.059 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:16:33.060 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:16:33.062 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:16:38.254 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时5192ms
+2026-05-04 10:16:41.269 [http-nio-8080-exec-6] WARN  com.quxiangshe.backend.util.JwtUtil - Token解析失败: JWT expired 13268 milliseconds ago at 2026-05-04T02:16:28.000Z. Current time: 2026-05-04T02:16:41.268Z. Allowed clock skew: 0 milliseconds.
+2026-05-04 10:16:41.270 [http-nio-8080-exec-6] WARN  c.q.backend.security.JwtAuthenticationFilter - Token已过期或无效
+2026-05-04 10:16:41.278 [http-nio-8080-exec-6] WARN  c.q.backend.security.JwtAuthenticationEntryPoint - 未认证的访问: /api/feed/follow-updated - Full authentication is required to access this resource
+2026-05-04 10:16:41.598 [http-nio-8080-exec-7] INFO  c.quxiangshe.backend.service.impl.AuthServiceImpl - 刷新Token成功: userId=200301
+2026-05-04 10:17:32.257 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:16:38, 0分钟前
+2026-05-04 10:17:32.258 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:17:32.258 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:18:32.247 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:16:38, 1分钟前
+2026-05-04 10:18:32.248 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:18:32.249 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:19:32.254 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:16:38, 2分钟前
+2026-05-04 10:19:32.256 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:19:32.257 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:20:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:16:38, 3分钟前
+2026-05-04 10:20:32.252 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:20:32.253 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:21:32.961 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:16:38, 4分钟前
+2026-05-04 10:21:32.962 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:21:32.963 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:21:32.963 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:21:37.157 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4194ms
+2026-05-04 10:22:32.254 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:21:37, 0分钟前
+2026-05-04 10:22:32.255 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:22:32.255 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:23:32.253 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:21:37, 1分钟前
+2026-05-04 10:23:32.254 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:23:32.255 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:24:32.245 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:21:37, 2分钟前
+2026-05-04 10:24:32.246 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:24:32.246 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:25:32.256 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:21:37, 3分钟前
+2026-05-04 10:25:32.257 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:25:32.258 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:26:33.007 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:21:37, 4分钟前
+2026-05-04 10:26:33.008 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:26:33.008 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:26:33.009 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:26:37.575 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4566ms
+2026-05-04 10:27:32.253 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:26:37, 0分钟前
+2026-05-04 10:27:32.254 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:27:32.255 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:28:32.244 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:26:37, 1分钟前
+2026-05-04 10:28:32.246 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:28:32.246 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:29:32.254 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:26:37, 2分钟前
+2026-05-04 10:29:32.256 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:29:32.256 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:30:00.005 [scheduling-1] INFO  c.q.backend.service.impl.ActivityServiceImpl - 开始每小时粉丝分类增量更新...
+2026-05-04 10:30:00.237 [scheduling-1] INFO  c.q.backend.service.impl.ActivityServiceImpl - 今日无互动用户，跳过
+2026-05-04 10:30:00.242 [scheduling-1] INFO  c.quxiangshe.backend.scheduler.HotScoreScheduler - 开始增量同步热度到Redis，有101条变化的笔记...
+2026-05-04 10:30:00.841 [scheduling-1] INFO  c.quxiangshe.backend.scheduler.HotScoreScheduler - 增量同步完成，笔记数: 101, 耗时: 601ms
+2026-05-04 10:30:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:26:37, 3分钟前
+2026-05-04 10:30:32.252 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:30:32.253 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:31:33.008 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:26:37, 4分钟前
+2026-05-04 10:31:33.009 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:31:33.010 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:31:33.010 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:31:37.533 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4523ms
+2026-05-04 10:31:41.289 [http-nio-8080-exec-5] WARN  com.quxiangshe.backend.util.JwtUtil - Token解析失败: JWT expired 289 milliseconds ago at 2026-05-04T02:31:41.000Z. Current time: 2026-05-04T02:31:41.289Z. Allowed clock skew: 0 milliseconds.
+2026-05-04 10:31:41.290 [http-nio-8080-exec-5] WARN  c.q.backend.security.JwtAuthenticationFilter - Token已过期或无效
+2026-05-04 10:31:41.291 [http-nio-8080-exec-5] WARN  c.q.backend.security.JwtAuthenticationEntryPoint - 未认证的访问: /api/feed/follow-updated - Full authentication is required to access this resource
+2026-05-04 10:31:41.591 [http-nio-8080-exec-3] INFO  c.quxiangshe.backend.service.impl.AuthServiceImpl - 刷新Token成功: userId=200301
+2026-05-04 10:32:32.245 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:31:37, 0分钟前
+2026-05-04 10:32:32.246 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:32:32.247 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:33:32.255 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:31:37, 1分钟前
+2026-05-04 10:33:32.256 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:33:32.257 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:34:32.270 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:31:37, 2分钟前
+2026-05-04 10:34:32.272 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:34:32.273 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:35:32.246 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:31:37, 3分钟前
+2026-05-04 10:35:32.258 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:35:32.259 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:36:33.036 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:31:37, 4分钟前
+2026-05-04 10:36:33.037 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:36:33.037 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:36:33.038 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:36:37.612 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4574ms
+2026-05-04 10:37:32.247 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:36:37, 0分钟前
+2026-05-04 10:37:32.248 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:37:32.249 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:38:32.241 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:36:37, 1分钟前
+2026-05-04 10:38:32.242 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:38:32.243 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:39:32.253 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:36:37, 2分钟前
+2026-05-04 10:39:32.254 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:39:32.254 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:40:32.244 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:36:37, 3分钟前
+2026-05-04 10:40:32.245 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:40:32.246 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:41:33.029 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:36:37, 4分钟前
+2026-05-04 10:41:33.031 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:41:33.031 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:41:33.031 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:41:37.498 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4466ms
+2026-05-04 10:42:32.256 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:41:37, 0分钟前
+2026-05-04 10:42:32.257 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:42:32.258 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:43:32.250 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:41:37, 1分钟前
+2026-05-04 10:43:32.251 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:43:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:44:32.247 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:41:37, 2分钟前
+2026-05-04 10:44:32.248 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:44:32.249 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:45:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:41:37, 3分钟前
+2026-05-04 10:45:32.252 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:45:32.253 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:46:33.495 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:41:37, 4分钟前
+2026-05-04 10:46:33.496 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:46:33.496 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:46:33.497 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:46:38.323 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4826ms
+2026-05-04 10:46:41.419 [http-nio-8080-exec-1] WARN  com.quxiangshe.backend.util.JwtUtil - Token解析失败: JWT expired 419 milliseconds ago at 2026-05-04T02:46:41.000Z. Current time: 2026-05-04T02:46:41.419Z. Allowed clock skew: 0 milliseconds.
+2026-05-04 10:46:41.420 [http-nio-8080-exec-1] WARN  c.q.backend.security.JwtAuthenticationFilter - Token已过期或无效
+2026-05-04 10:46:41.422 [http-nio-8080-exec-1] WARN  c.q.backend.security.JwtAuthenticationEntryPoint - 未认证的访问: /api/feed/follow-updated - Full authentication is required to access this resource
+2026-05-04 10:46:41.875 [http-nio-8080-exec-2] INFO  c.quxiangshe.backend.service.impl.AuthServiceImpl - 刷新Token成功: userId=200301
+2026-05-04 10:47:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:46:38, 0分钟前
+2026-05-04 10:47:32.252 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:47:32.253 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:48:32.256 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:46:38, 1分钟前
+2026-05-04 10:48:32.257 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:48:32.257 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:49:32.240 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:46:38, 2分钟前
+2026-05-04 10:49:32.241 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:49:32.242 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:50:32.241 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:46:38, 3分钟前
+2026-05-04 10:50:32.242 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:50:32.242 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:51:33.306 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:46:38, 4分钟前
+2026-05-04 10:51:33.314 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:51:33.315 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:51:33.315 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:51:38.299 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4984ms
+2026-05-04 10:52:32.247 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:51:38, 0分钟前
+2026-05-04 10:52:32.248 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:52:32.249 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:53:32.252 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:51:38, 1分钟前
+2026-05-04 10:53:32.253 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:53:32.254 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:54:32.333 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:51:38, 2分钟前
+2026-05-04 10:54:32.334 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:54:32.335 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:55:32.244 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:51:38, 3分钟前
+2026-05-04 10:55:32.245 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:55:32.246 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:58:35.024 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:51:38, 6分钟前
+2026-05-04 10:58:35.025 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:58:35.025 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:58:35.027 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 10:58:39.579 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4552ms
+2026-05-04 10:58:39.660 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:58:39, 0分钟前
+2026-05-04 10:58:39.662 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:58:39.662 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:58:39.662 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:58:39, 0分钟前
+2026-05-04 10:58:39.663 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:58:39.663 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 10:59:32.247 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:58:39, 0分钟前
+2026-05-04 10:59:32.248 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过8小时未执行!
+2026-05-04 10:59:32.248 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:00:00.051 [scheduling-1] INFO  c.q.backend.service.impl.ActivityServiceImpl - 开始每小时同步用户活跃度到Redis...
+2026-05-04 11:00:00.665 [scheduling-1] INFO  c.q.backend.service.impl.ActivityServiceImpl - 从数据库加载4条活跃度数据
+2026-05-04 11:00:03.825 [scheduling-1] INFO  c.q.backend.service.impl.ActivityServiceImpl - 用户活跃度同步完成，耗时3774ms
+2026-05-04 11:00:06.073 [scheduling-1] INFO  c.q.backend.service.impl.ActivityServiceImpl - 开始同步大博主粉丝分类，共0个
+2026-05-04 11:00:06.090 [scheduling-1] INFO  c.q.backend.service.impl.ActivityServiceImpl - 大博主粉丝分类同步完成，耗时2264ms
+2026-05-04 11:00:06.169 [scheduling-1] INFO  c.q.backend.service.impl.ActivityServiceImpl - Redis同步完成，耗时6039ms
+2026-05-04 11:00:32.244 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:58:39, 1分钟前
+2026-05-04 11:00:32.246 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:00:32.247 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:01:33.098 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 10:58:39, 2分钟前
+2026-05-04 11:01:33.100 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:01:33.100 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:01:33.101 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 11:01:37.946 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4845ms
+2026-05-04 11:01:41.264 [http-nio-8080-exec-7] WARN  com.quxiangshe.backend.util.JwtUtil - Token解析失败: JWT expired 264 milliseconds ago at 2026-05-04T03:01:41.000Z. Current time: 2026-05-04T03:01:41.264Z. Allowed clock skew: 0 milliseconds.
+2026-05-04 11:01:41.265 [http-nio-8080-exec-7] WARN  c.q.backend.security.JwtAuthenticationFilter - Token已过期或无效
+2026-05-04 11:01:41.265 [http-nio-8080-exec-7] WARN  c.q.backend.security.JwtAuthenticationEntryPoint - 未认证的访问: /api/feed/follow-updated - Full authentication is required to access this resource
+2026-05-04 11:01:41.357 [http-nio-8080-exec-8] INFO  c.quxiangshe.backend.service.impl.AuthServiceImpl - 刷新Token成功: userId=200301
+2026-05-04 11:02:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:01:37, 0分钟前
+2026-05-04 11:02:32.252 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:02:32.253 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:03:32.250 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:01:37, 1分钟前
+2026-05-04 11:03:32.251 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:03:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:04:32.240 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:01:37, 2分钟前
+2026-05-04 11:04:32.241 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:04:32.242 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:05:32.248 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:01:37, 3分钟前
+2026-05-04 11:05:32.305 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:05:32.305 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:06:32.907 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:01:37, 4分钟前
+2026-05-04 11:06:32.909 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:06:32.910 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:06:32.910 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 11:06:37.347 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4436ms
+2026-05-04 11:07:32.249 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:06:37, 0分钟前
+2026-05-04 11:07:32.250 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:07:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:08:32.241 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:06:37, 1分钟前
+2026-05-04 11:08:32.242 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:08:32.242 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:09:32.249 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:06:37, 2分钟前
+2026-05-04 11:09:32.250 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:09:32.250 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:10:32.256 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:06:37, 3分钟前
+2026-05-04 11:10:32.257 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:10:32.258 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:11:32.930 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:06:37, 4分钟前
+2026-05-04 11:11:32.931 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:11:32.932 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:11:32.932 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 11:11:37.375 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4443ms
+2026-05-04 11:12:32.248 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:11:37, 0分钟前
+2026-05-04 11:12:32.249 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:12:32.250 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:13:32.249 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:11:37, 1分钟前
+2026-05-04 11:13:32.250 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:13:32.250 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:14:32.248 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:11:37, 2分钟前
+2026-05-04 11:14:32.251 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:14:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:15:32.248 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:11:37, 3分钟前
+2026-05-04 11:15:32.249 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:15:32.250 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:16:32.916 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:11:37, 4分钟前
+2026-05-04 11:16:32.917 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:16:32.918 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:16:32.918 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 11:16:37.441 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4522ms
+2026-05-04 11:16:41.265 [http-nio-8080-exec-3] WARN  com.quxiangshe.backend.util.JwtUtil - Token解析失败: JWT expired 265 milliseconds ago at 2026-05-04T03:16:41.000Z. Current time: 2026-05-04T03:16:41.265Z. Allowed clock skew: 0 milliseconds.
+2026-05-04 11:16:41.265 [http-nio-8080-exec-3] WARN  c.q.backend.security.JwtAuthenticationFilter - Token已过期或无效
+2026-05-04 11:16:41.266 [http-nio-8080-exec-3] WARN  c.q.backend.security.JwtAuthenticationEntryPoint - 未认证的访问: /api/feed/follow-updated - Full authentication is required to access this resource
+2026-05-04 11:16:41.636 [http-nio-8080-exec-4] INFO  c.quxiangshe.backend.service.impl.AuthServiceImpl - 刷新Token成功: userId=200301
+2026-05-04 11:17:32.246 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:16:37, 0分钟前
+2026-05-04 11:17:32.247 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:17:32.248 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:18:32.256 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:16:37, 1分钟前
+2026-05-04 11:18:32.257 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:18:32.257 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:19:32.250 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:16:37, 2分钟前
+2026-05-04 11:19:32.251 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:19:32.252 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:20:32.248 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:16:37, 3分钟前
+2026-05-04 11:20:32.250 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:20:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:21:33.040 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:16:37, 4分钟前
+2026-05-04 11:21:33.041 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:21:33.042 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过
+2026-05-04 11:21:33.042 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 开始笔记计数器对账任务...
+2026-05-04 11:21:37.748 [scheduling-1] INFO  c.q.backend.scheduler.ReconciliationScheduler - 笔记计数器对账完成: 点赞0条, 收藏0条, 浏览0条, 转发0条, 评论0条, 耗时4706ms
+2026-05-04 11:22:32.250 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 对账任务状态正常，上次执行: 2026-05-04 11:21:37, 0分钟前
+2026-05-04 11:22:32.251 [scheduling-1] WARN  c.q.backend.scheduler.MonitoringAlertScheduler - [告警] 清理任务超过9小时未执行!
+2026-05-04 11:22:32.251 [scheduling-1] INFO  c.q.backend.scheduler.MonitoringAlertScheduler - 热度衰减任务尚未执行过

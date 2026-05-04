@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- 背景圆形 -->
-  <circle cx="256" cy="256" r="256" fill="#4A90D9"/>
-  <!-- "理"字 -->
-  <text x="256" y="320" font-family="Arial, sans-serif" font-size="280" font-weight="bold" fill="white" text-anchor="middle">理</text>
-</svg>

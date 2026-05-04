@@ -1,30 +1,92 @@
-# ==================== 通用 ====================
+# ====================
+# Maven
+# ====================
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+backend/*.class
+backend/*.jar
+backend/*.war
+
+# ====================
+# Node_modules
+# ====================
+frontend/node_modules/
+frontend/.npm
+frontend/.yarn-integrity
+frontend/.pnp
+frontend/.pnp.js
+
+# ====================
+# Build outputs
+# ====================
+frontend/dist/
+frontend/build/
+frontend/.nuxt/
+frontend/.output/
+
+# ====================
+# IDE
+# ====================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
-*.log
-logs/
 
-# ==================== 前端 (quxiangshe-web) ====================
-node_modules/
-dist/
-*.local
+# ====================
+# Logs
+# ====================
+logs/
+*.log
+*.log.*
+backend/logs/
+*.err
+
+# ====================
+# Environment variables
+# ====================
 .env
 .env.local
-.vscode/
-.idea/
+.env.*.local
 
-# ==================== 后端 (quxiangshe) ====================
-target/
-.mvn/
-mvnw
-mvnw.cmd
-hs_err_pid*.log
-replay_pid*.log
+# ====================
+# Test files
+# ====================
+backend/src/test/
+*.test.js
+coverage/
+.nyc_output/
 
-# ==================== IDE ====================
-*.iml
-*.iws
-*.ipr
-.settings/
-.classpath
-.project
+# ====================
+# Temporary files
+# ====================
+*.tmp
+*.temp
+.cache/
+tmp/
+temp/
+
+# ====================
+# OpenCode (do not commit to Git)
+# ====================
+.opencode/
+opencode.json
+
+# ====================
+# Upload files
+# ====================
+backend/uploads/
+uploads/
+
+# ====================
+# SQL dump (optional - keep if needed)
+# ====================
+*.sql.bak
+*.dump
