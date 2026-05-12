@@ -26,6 +26,13 @@
         <knife4j.version>4.3.0</knife4j.version>
         <hutool.version>5.8.24</hutool.version>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+    </repositories>
     
     <dependencies>
         <!-- Spring Boot Web -->
@@ -152,13 +159,6 @@
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
-        <!-- Pusher WebSocket推送 -->
-        <dependency>
-            <groupId>com.pusher</groupId>
-            <artifactId>pusher-java-server</artifactId>
-            <version>7.2.0</version>
-        </dependency>
-        
         <!-- Caffeine本地缓存 (新增: 多级缓存) -->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
@@ -192,21 +192,15 @@
             <artifactId>aliyun-sdk-oss</artifactId>
             <version>3.17.2</version>
         </dependency>
-        
-        
-        
+
+        <!-- LangChain4j存在OkHttp版本冲突，改用RestTemplate直接调用豆包API -->
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.30</version>
             <scope>provided</scope>
-        </dependency>
-        
-        <!-- Caffeine本地缓存 -->
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
         </dependency>
         
         <!-- Test -->
@@ -243,6 +237,7 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <arguments>--spring.profiles.active=local</arguments>
                 </configuration>
                 <executions>
                     <execution>

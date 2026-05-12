@@ -98,6 +98,14 @@ export function deleteComment(commentId, noteId) {
   })
 }
 
+// 获取AI回复建议
+export function getAiReplySuggestions(commentId) {
+  return request({
+    url: `/note/comment/${commentId}/ai-suggestions`,
+    method: 'get'
+  })
+}
+
 // 上传图片
 export function uploadImage(file) {
   const formData = new FormData()

@@ -1,26 +1,60 @@
-# 趣享社 - 社交平台
+# 趣享社 - 校园社交平台
 
-基于 Spring Boot + Vue 的校园社交平台，支持笔记发布、互动（点赞/评论/关注）、Feed流推荐等功能。
+基于 Spring Boot + Vue 3 的校园社交平台，支持笔记分享、互动社交、Feed流推荐等功能。
 
 ## 技术栈
 
-- **后端**: Spring Boot 3.2 + MyBatis-Plus + Redis + RabbitMQ
-- **前端**: Vue 3 + Vite + Element Plus
+### 后端
+- **框架**: Spring Boot 3.2 + Spring Security
+- **ORM**: MyBatis-Plus 3.5
 - **数据库**: MySQL 8.0
-- **缓存**: Redis 7
+- **缓存**: Redis 7 + Redisson + Caffeine
 - **消息队列**: RabbitMQ 3.12
+- **实时通信**: WebSocket + Pusher
+- **API文档**: Knife4j
+
+### 前端
+- **框架**: Vue 3 + Composition API
+- **构建工具**: Vite
+- **UI组件**: Element Plus
+- **状态管理**: Pinia
+- **路由**: Vue Router
+
+### 中间件
+- **对象存储**: 阿里云 OSS
+- **短信服务**: 腾讯云 SMS
+- **AI服务**: 豆包 (字节跳动)
+- **数据同步**: Canal (MySQL binlog)
 
 ## 功能特性
 
-- ✅ 用户认证 (JWT)
+### 用户系统
+- ✅ 邮箱注册/登录
+- ✅ JWT 认证
+- ✅ 微信登录 (可选)
+- ✅ 用户资料管理
+- ✅ 密码修改/重置
+
+### 社交功能
 - ✅ 笔记发布 (支持图片/视频)
-- ✅ 互动功能 (点赞/评论/收藏/转发)
+- ✅ 点赞/评论/收藏/转发
 - ✅ 关注/粉丝系统
+- ✅ 私信聊天
+- ✅ 黑名单
+
+### 内容生态
 - ✅ Feed流推荐 (推拉结合)
+- ✅ 热门内容计算
+- ✅ 搜索功能
+- ✅ AI内容审核 (异步)
+- ✅ 视频转码处理
+
+### 系统特性
 - ✅ 异步通知 (MQ)
-- ✅ 邮件验证码
-- ✅ 视频异步转码
-- ✅ 内容审核 (AI)
+- ✅ WebSocket实时推送
+- ✅ 接口限流
+- ✅ 反垃圾检测
+- ✅ 多级缓存
 
 ## 快速部署 (Docker Compose)
 
@@ -33,13 +67,14 @@
 
 ```bash
 # 1. 克隆项目
-git clone <项目地址>
-cd quxiangshe-project
+git clone https://github.com/leiou-xjq/quxiangshe.git
+cd quxiangshe
 
 # 2. 复制环境配置
 cp .env.example .env
+# 编辑 .env 填入真实配置
 
-# 3. 启动所有服务 (首次构建需要几分钟)
+# 3. 启动所有服务
 docker-compose up -d
 
 # 4. 查看服务状态
@@ -55,110 +90,79 @@ docker-compose logs -f backend
 |------|------|
 | 前端Web | http://localhost |
 | 后端API | http://localhost:8080/api |
-| Swagger文档 | http://localhost:8080/api/doc.html |
-| RabbitMQ管理 | http://localhost:15672 (账号: admin/admin123) |
+| API文档 | http://localhost:8080/api/doc.html |
+| RabbitMQ | http://localhost:15672 (admin/admin123) |
 
-## 手动部署 (不使用Docker)
+## 环境变量
 
-### 后端部署
-
-```bash
-# 1. 安装依赖
-cd backend
-mvn clean package -DskipTests
-
-# 2. 配置环境变量
-cp src/main/resources/application.yml.example src/main/resources/application.yml
-# 编辑 application.yml 填入数据库、Redis等配置
-
-# 3. 启动
-java -jar target/lixiang-backend-1.0.0.jar
-```
-
-### 前端部署
-
-```bash
-# 1. 安装依赖
-cd frontend
-npm install
-
-# 2. 构建
-npm run build
-
-# 3. 部署
-# 将 dist 目录内容部署到 Nginx
-```
-
-## 环境变量说明
-
-| 变量 | 说明 | 示例 |
-|------|------|------|
-| MYSQL_PASSWORD | MySQL root密码 | quxiangshe123 |
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| MYSQL_PASSWORD | MySQL密码 | quxiangshe123 |
 | REDIS_PASSWORD | Redis密码 | quxiangshe123 |
-| RABBITMQ_PASSWORD | RabbitMQ密码 | admin123 |
-| JWT_SECRET | JWT签名密钥 | 至少32位随机字符串 |
-| MAIL_USERNAME | QQ邮箱 | 123456789@qq.com |
-| MAIL_PASSWORD | QQ邮箱授权码 | 需要在邮箱设置中获取 |
-| OSS_ENABLED | 是否启用阿里云OSS | false |
-| DOUBAO_API_KEY | 豆包AI审核API密钥 | 可选 |
+| JWT_SECRET | JWT密钥 (至少32位) | - |
+| MAIL_USERNAME | 邮箱地址 | - |
+| MAIL_PASSWORD | 邮箱授权码 | - |
+
+完整环境变量列表请参考 `.env.example`。
 
 ## 目录结构
 
 ```
-quxiangshe-project/
-├── backend/               # Spring Boot后端
+quxiangshe/
+├── backend/
+│   ├── src/main/java/com/quxiangshe/backend/
+│   │   ├── config/          # 配置类
+│   │   ├── controller/      # 控制器
+│   │   ├── service/        # 服务层
+│   │   ├── entity/         # 实体类
+│   │   ├── mapper/         # MyBatis映射
+│   │   ├── consumer/      # MQ消费者
+│   │   ├── scheduler/     # 定时任务
+│   │   └── util/          # 工具类
+│   └── src/main/resources/
+│       └── application.yml
+├── frontend/
 │   ├── src/
-│   │   └── main/
-│   │       ├── java/     # Java源码
-│   │       └── resources/
-│   │           ├── application.yml
-│   │           └── mapper/
-│   ├── pom.xml
-│   └── Dockerfile
-├── frontend/             # Vue前端
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── nginx.conf
-├── docker-compose.yml    # Docker编排配置
-├── .env                  # 环境变量配置
+│   │   ├── api/           # API请求
+│   │   ├── views/        # 页面组件
+│   │   ├── components/   # 通用组件
+│   │   ├── stores/       # Pinia状态
+│   │   └── router/       # 路由配置
+│   └── package.json
+├── docker-compose.yml
+├── .env.example
 └── README.md
 ```
 
-## 常见问题
+## 本地开发
 
-### 1. 启动后端失败，提示连接不上MySQL
+### 后端
 
-- 检查 .env 中的 MYSQL_PASSWORD 是否正确
-- 检查 MySQL 容器是否正常启动: `docker-compose ps`
-- 查看日志: `docker-compose logs mysql`
+```bash
+cd backend
+mvn clean package -DskipTests
+java -jar target/lixiang-backend-1.0.0.jar
+```
 
-### 2. 启动后端失败，提示连接不上Redis
+### 前端
 
-- 检查 .env 中的 REDIS_PASSWORD 是否正确
-- 检查 Redis 容器是否正常启动
-
-### 3. 前端无法访问后端API
-
-- 检查后端是否正常启动: `docker-compose logs backend`
-- 检查 Nginx 配置是否正确
-
-### 4. 邮件发送失败
-
-- 检查 MAIL_USERNAME 和 MAIL_PASSWORD 是否正确
-- QQ邮箱需要使用授权码而非登录密码
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ## API文档
 
-启动后访问: http://localhost:8080/api/doc.html
+启动后端后访问: http://localhost:8080/api/doc.html
 
-## 性能优化建议
+## 性能优化
 
-1. **MQ异步处理**: 点赞/评论/关注通知、邮件发送、视频转码已通过MQ异步化
-2. **多级缓存**: Redis + Caffeine本地缓存
-3. **数据库索引**: 合理建立索引
-4. **Feed流优化**: 推拉结合模式
+1. **多级缓存**: Redis + Caffeine本地缓存
+2. **异步处理**: RabbitMQ异步通知、转码、审核
+3. **Feed流优化**: 推拉结合模式
+4. **数据库**: 合理索引 + 读写分离
+5. **分布式锁**: Redisson实现
 
 ## 许可证
 

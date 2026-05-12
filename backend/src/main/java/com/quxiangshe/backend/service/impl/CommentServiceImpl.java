@@ -330,7 +330,12 @@ public List<NoteComment> getCommentList(Long noteId, int page, int size) {
         
         return true;
     }
-    
+
+    @Override
+    public NoteComment getCommentById(Long commentId) {
+        return commentMapper.selectById(commentId);
+    }
+
     // ==================== 私有方法 ====================
     
     /**

@@ -158,90 +158,98 @@ public class CommentSortServiceImpl implements ICommentSortService {
     
     @Override
     @Transactional
-    public void likeComment(Long commentId, Long userId) {
+    public int likeComment(Long commentId, Long userId) {
         if (commentId == null || userId == null) {
-            return;
+            return 0;
         }
-        
+
         // 检查是否已经点赞
         if (checkUserLikedComment(commentId, userId)) {
-            return;
+            return 0;
         }
-        
+
         NoteComment comment = noteCommentMapper.selectById(commentId);
         if (comment == null || comment.getStatus() != 1) {
-            return;
+            return 0;
         }
-        
+
         // 添加点赞记录
         CommentLike commentLike = new CommentLike();
         commentLike.setCommentId(commentId);
         commentLike.setUserId(userId);
         commentLike.setCreatedAt(java.time.LocalDateTime.now());
         commentLikeMapper.insert(commentLike);
-        
-        // 更新评论点赞数
-        int newCount = (comment.getLikeCount() != null ? comment.getLikeCount() : 0) + 1;
-        comment.setLikeCount(newCount);
-        noteCommentMapper.updateById(comment);
-        
+
+        // 原子递增点赞数（解决并发竞态问题）
+        noteCommentMapper.incrementLikeCount(commentId);
+
+        // 获取更新后的点赞数
+        Integer newCount = noteCommentMapper.selectLikeCount(commentId);
+        int count = newCount != null ? newCount : 0;
+
         // 更新Redis排序索引
         SortStrategy strategy = getStrategy(comment.getNoteId(), comment.getRootId());
         CommentSortData commentData = CommentSortData.builder()
                 .commentId(commentId)
-                .likeCount(newCount)
+                .likeCount(count)
                 .replyCount(comment.getReplyCount())
-                .createdAt(comment.getCreatedAt() != null ? 
+                .createdAt(comment.getCreatedAt() != null ?
                     comment.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
                 .build();
         double score = ScoreCalculator.calculateHotScore(commentData);
         strategy.updateScore(commentId, score);
-        
+
         fullSortStrategy.refreshCache(comment.getNoteId());
+
+        return count;
     }
-    
+
     @Override
     @Transactional
-    public void unlikeComment(Long commentId, Long userId) {
+    public int unlikeComment(Long commentId, Long userId) {
         if (commentId == null || userId == null) {
-            return;
+            return 0;
         }
-        
+
         // 检查是否已经点赞
         if (!checkUserLikedComment(commentId, userId)) {
-            return;
+            return 0;
         }
-        
+
         NoteComment comment = noteCommentMapper.selectById(commentId);
         if (comment == null) {
-            return;
+            return 0;
         }
-        
+
         // 删除点赞记录
-        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CommentLike> wrapper = 
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CommentLike> wrapper =
             new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
         wrapper.eq(CommentLike::getCommentId, commentId)
                .eq(CommentLike::getUserId, userId);
         commentLikeMapper.delete(wrapper);
-        
-        // 更新评论点赞数
-        int newCount = Math.max(0, (comment.getLikeCount() != null ? comment.getLikeCount() : 0) - 1);
-        comment.setLikeCount(newCount);
-        noteCommentMapper.updateById(comment);
-        
-// 更新Redis排序索引
+
+        // 原子递减点赞数（解决并发竞态问题）
+        noteCommentMapper.decrementLikeCount(commentId);
+
+        // 获取更新后的点赞数
+        Integer newCount = noteCommentMapper.selectLikeCount(commentId);
+        int count = newCount != null ? newCount : 0;
+
+        // 更新Redis排序索引
         SortStrategy strategy = getStrategy(comment.getNoteId(), comment.getRootId());
         CommentSortData commentData = CommentSortData.builder()
                 .commentId(commentId)
-                .likeCount(newCount)
+                .likeCount(count)
                 .replyCount(comment.getReplyCount())
-                .createdAt(comment.getCreatedAt() != null ? 
+                .createdAt(comment.getCreatedAt() != null ?
                     comment.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
                 .build();
         double score = ScoreCalculator.calculateHotScore(commentData);
         strategy.updateScore(commentId, score);
-        
+
         fullSortStrategy.refreshCache(comment.getNoteId());
+
+        return count;
     }
     
     private boolean checkUserLikedComment(Long commentId, Long userId) {

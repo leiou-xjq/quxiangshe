@@ -15,6 +15,7 @@ import com.quxiangshe.backend.entity.User;
 import com.quxiangshe.backend.service.ICommentService;
 import com.quxiangshe.backend.service.ICommentSortService;
 import com.quxiangshe.backend.service.IFollowService;
+import com.quxiangshe.backend.service.IAiReplySuggestionService;
 import com.quxiangshe.backend.service.INoteService;
 import com.quxiangshe.backend.service.IOssService;
 import com.quxiangshe.backend.service.IUserService;
@@ -55,8 +56,10 @@ public class NoteController {
     private final ICommentService commentService;
     private final ICommentSortService commentSortService;
     private final FullSortStrategy fullSortStrategy;
-    private final IOssService ossService;
     private final IFollowService followService;
+    private final IAiReplySuggestionService aiReplySuggestionService;
+    private final IOssService ossService;
+    private final IUserService userService;
     private final RabbitTemplate rabbitTemplate;
     
     /**
@@ -283,19 +286,15 @@ public class NoteController {
         if (userId == null) {
             return R.fail(401, "请先登录");
         }
-        
+
         try {
-            boolean isLiked = noteService.likeNote(noteId, userId);
-            if (isLiked) {
-                return R.ok("点赞成功");
-            } else {
-                return R.ok("取消点赞成功");
-            }
+            java.util.Map<String, Object> result = noteService.likeNote(noteId, userId);
+            return R.ok(result);
         } catch (Exception e) {
             return R.fail(400, e.getMessage());
         }
     }
-    
+
     /**
      * 取消点赞 - 每用户每分钟最多5次
      */
@@ -314,15 +313,15 @@ public class NoteController {
         if (userId == null) {
             return R.fail(401, "请先登录");
         }
-        
+
         try {
-            noteService.unlikeNote(noteId, userId);
-            return R.ok("取消点赞成功");
+            java.util.Map<String, Object> result = noteService.unlikeNote(noteId, userId);
+            return R.ok(result);
         } catch (Exception e) {
             return R.fail(400, e.getMessage());
         }
     }
-    
+
     /**
      * 收藏笔记 - 每用户每分钟最多3次
      */
@@ -341,10 +340,14 @@ public class NoteController {
         if (userId == null) {
             return R.fail(401, "请先登录");
         }
-        noteService.favoriteNote(noteId, userId);
-        return R.ok("收藏成功");
+        try {
+            java.util.Map<String, Object> result = noteService.favoriteNote(noteId, userId);
+            return R.ok(result);
+        } catch (Exception e) {
+            return R.fail(400, e.getMessage());
+        }
     }
-    
+
     /**
      * 取消收藏 - 每用户每分钟最多3次
      */
@@ -363,8 +366,12 @@ public class NoteController {
         if (userId == null) {
             return R.fail(401, "请先登录");
         }
-        noteService.unfavoriteNote(noteId, userId);
-        return R.ok("取消收藏成功");
+        try {
+            java.util.Map<String, Object> result = noteService.unfavoriteNote(noteId, userId);
+            return R.ok(result);
+        } catch (Exception e) {
+            return R.fail(400, e.getMessage());
+        }
     }
     
     /**
@@ -410,7 +417,34 @@ public class NoteController {
         
         return R.ok(response);
     }
-    
+
+    /**
+     * 获取AI回复建议
+     * 用户发评论后调用，获取AI生成的回复建议
+     */
+    @Operation(summary = "获取AI回复建议")
+    @GetMapping("/comment/{commentId}/ai-suggestions")
+    public R<List<String>> getAiReplySuggestions(@PathVariable Long commentId) {
+        // 获取评论信息
+        NoteComment comment = commentService.getCommentById(commentId);
+        if (comment == null) {
+            return R.fail(404, "评论不存在");
+        }
+
+        // 获取笔记内容
+        Long noteId = comment.getNoteId();
+        Note note = noteService.getNoteById(noteId);
+        if (note == null) {
+            return R.fail(404, "笔记不存在");
+        }
+
+        // 生成AI建议
+        List<String> suggestions = aiReplySuggestionService.getSuggestions(
+                noteId, commentId, note.getTitle(), comment.getContent());
+
+        return R.ok(suggestions);
+    }
+
     /**
      * 删除评论
      * 支持删除自己发布的评论，或笔记发布者删除任意评论

@@ -55,6 +55,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getSessionList, createSession } from '@/api/message'
 import { searchUsers as searchUsersApi } from '@/api/search'
+import { getUserInfo } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { Plus, ArrowLeft } from '@element-plus/icons-vue'
 
@@ -65,19 +66,64 @@ const searchKeyword = ref('')
 const searchResults = ref([])
 const currentUserId = ref(null)
 
+// 用户信息缓存
+const userCache = new Map()
+
+// 获取目标用户信息
+async function fetchTargetUserInfo(targetUserId) {
+  if (userCache.has(targetUserId)) {
+    return userCache.get(targetUserId)
+  }
+  
+  try {
+    const res = await getUserInfo(targetUserId)
+    const user = res.data
+    const userInfo = {
+      id: user.id,
+      nickname: user.nickname || user.username || '用户',
+      avatar: user.avatar || 'https://picsum.photos/100'
+    }
+    userCache.set(targetUserId, userInfo)
+    return userInfo
+  } catch (e) {
+    console.error('获取用户信息失败', e)
+    return {
+      id: targetUserId,
+      nickname: '用户' + targetUserId,
+      avatar: 'https://picsum.photos/100'
+    }
+  }
+}
+
 async function loadSessions() {
   try {
     const res = await getSessionList({ size: 50, offset: 0 })
     sessions.value = res.data || []
+    
+    // 预加载所有目标用户信息
+    for (const session of sessions.value) {
+      if (session.targetUserId && !userCache.has(session.targetUserId)) {
+        fetchTargetUserInfo(session.targetUserId)
+      }
+    }
   } catch (e) {
     console.error('获取会话列表失败', e)
   }
 }
 
 function getTargetUser(session) {
+  const targetUserId = session.targetUserId
+  if (userCache.has(targetUserId)) {
+    return userCache.get(targetUserId)
+  }
+  
+  // 异步加载用户信息
+  fetchTargetUserInfo(targetUserId)
+  
+  // 返回默认信息
   return {
-    id: session.targetUserId,
-    nickname: '用户' + session.targetUserId,
+    id: targetUserId,
+    nickname: '加载中...',
     avatar: 'https://picsum.photos/100'
   }
 }

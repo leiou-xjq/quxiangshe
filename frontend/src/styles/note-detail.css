@@ -432,6 +432,42 @@
   color: var(--color-primary-dark);
 }
 
+/* AI建议词条 */
+.ai-suggestion-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 8px 0 4px 0;
+  gap: 6px;
+}
+
+.ai-bar-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.ai-suggestion-chip {
+  padding: 3px 12px;
+  border-radius: 14px;
+  background: #e8f4fd;
+  color: var(--color-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.ai-suggestion-chip:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.ai-empty {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: var(--spacing-lg);
+}
+
 /* 点赞按钮 */
 .comment-like {
   cursor: pointer;

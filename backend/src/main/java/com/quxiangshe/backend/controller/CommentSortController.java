@@ -87,15 +87,15 @@ public class CommentSortController {
         if (userId == null) {
             return R.fail(401, "请先登录");
         }
-        
+
         try {
-            commentSortService.likeComment(commentId, userId);
-            return R.ok("点赞成功");
+            int likeCount = commentSortService.likeComment(commentId, userId);
+            return R.ok(Map.of("liked", true, "likeCount", likeCount));
         } catch (Exception e) {
             return R.fail(400, e.getMessage());
         }
     }
-    
+
     @Operation(summary = "取消点赞")
     @DeleteMapping("/{commentId}/like")
     public R<?> unlikeComment(
@@ -105,10 +105,10 @@ public class CommentSortController {
         if (userId == null) {
             return R.fail(401, "请先登录");
         }
-        
+
         try {
-            commentSortService.unlikeComment(commentId, userId);
-            return R.ok("取消点赞成功");
+            int likeCount = commentSortService.unlikeComment(commentId, userId);
+            return R.ok(Map.of("liked", false, "likeCount", likeCount));
         } catch (Exception e) {
             return R.fail(400, e.getMessage());
         }

@@ -9,23 +9,29 @@ import java.time.LocalDateTime;
 /**
  * 笔记实体类
  * 对应数据库表: note
- * 
+ *
  * @author 趣享社技术团队
  */
 @Data
 @TableName("note")
 public class Note {
-    
+
     /**
      * 笔记ID
      */
     @TableId(type = IdType.AUTO)
     private Long id;
-    
+
     /**
      * 发布者用户ID
      */
     private Long userId;
+
+    /**
+     * 乐观锁版本号
+     */
+    @Version
+    private Integer version;
     
     /**
      * 笔记标题

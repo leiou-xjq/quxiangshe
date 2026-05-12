@@ -14,10 +14,18 @@ public interface ICommentSortService {
     long getCommentCount(Long postId, Long rootId);
     
     CommentSortData addComment(Long userId, Long postId, Long parentId, String content);
-    
-    void likeComment(Long commentId, Long userId);
-    
-    void unlikeComment(Long commentId, Long userId);
+
+    /**
+     * 评论点赞
+     * @return 最新的点赞数
+     */
+    int likeComment(Long commentId, Long userId);
+
+    /**
+     * 取消评论点赞
+     * @return 最新的点赞数
+     */
+    int unlikeComment(Long commentId, Long userId);
     
     void deleteComment(Long commentId, Long userId);
     

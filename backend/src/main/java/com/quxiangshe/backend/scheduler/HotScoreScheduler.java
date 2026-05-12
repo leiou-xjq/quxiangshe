@@ -9,6 +9,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.RedisTemplate;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -60,11 +64,27 @@ public class HotScoreScheduler {
             String tempKey = HOT_RANK_KEY_V2;
             redisTemplate.delete(tempKey);
             
-            for (String noteId : noteIds) {
-                Double score = redisTemplate.opsForZSet().score(HOT_RANK_KEY, noteId);
-                if (score != null && score > 0) {
-                    double newScore = score * DECAY_FACTOR;
-                    redisTemplate.opsForZSet().add(tempKey, noteId, newScore);
+            List<String> noteIdList = new ArrayList<>(noteIds);
+            List<List<String>> batches = new ArrayList<>();
+            for (int i = 0; i < noteIdList.size(); i += 500) {
+                batches.add(noteIdList.subList(i, Math.min(i + 500, noteIdList.size())));
+            }
+            
+            for (List<String> batch : batches) {
+                List<Object> results = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+                    for (String noteId : batch) {
+                        connection.zSetCommands().zScore(HOT_RANK_KEY.getBytes(), noteId.getBytes());
+                    }
+                    return null;
+                });
+                
+                int idx = 0;
+                for (String noteId : batch) {
+                    Double score = (Double) results.get(idx++);
+                    if (score != null && score > 0) {
+                        double newScore = score * DECAY_FACTOR;
+                        redisTemplate.opsForZSet().add(tempKey, noteId, newScore);
+                    }
                 }
             }
             
@@ -117,13 +137,28 @@ public class HotScoreScheduler {
                 return;
             }
             
+            List<Note> toAdd = new ArrayList<>();
+            List<String> toRemove = new ArrayList<>();
             for (Note note : changedNotes) {
                 if (note.getStatus() == 1) {
-                    double hotScore = calculateHotScore(note);
-                    redisTemplate.opsForZSet().add(HOT_RANK_KEY, note.getId().toString(), hotScore);
+                    toAdd.add(note);
                 } else {
-                    redisTemplate.opsForZSet().remove(HOT_RANK_KEY, note.getId().toString());
+                    toRemove.add(note.getId().toString());
                 }
+            }
+            
+            if (!toAdd.isEmpty()) {
+                redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+                    for (Note note : toAdd) {
+                        double hotScore = calculateHotScore(note);
+                        connection.zSetCommands().zAdd(HOT_RANK_KEY.getBytes(), hotScore, note.getId().toString().getBytes());
+                    }
+                    return null;
+                });
+            }
+            
+            if (!toRemove.isEmpty()) {
+                redisTemplate.opsForZSet().remove(HOT_RANK_KEY, toRemove.toArray(new String[0]));
             }
             
             redisTemplate.expire(HOT_RANK_KEY, 7, TimeUnit.DAYS);

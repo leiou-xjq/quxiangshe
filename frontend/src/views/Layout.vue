@@ -92,7 +92,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { HomeFilled, Bell, Plus, User, Search, EditPen, ArrowDown, Message } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
@@ -143,8 +143,11 @@ async function fetchUnreadCount() {
 
 async function fetchMessageUnreadCount() {
   try {
+    console.log('正在获取私信未读数...')
     const res = await getMessageUnreadCount()
+    console.log('私信未读数响应:', res)
     messageUnreadCount.value = res.data || 0
+    console.log('私信未读数:', messageUnreadCount.value)
   } catch (e) {
     console.error('获取私信未读数失败', e)
   }
@@ -164,6 +167,42 @@ onMounted(() => {
   }
   fetchUnreadCount()
   fetchMessageUnreadCount()
+})
+
+// 监听用户登录状态变化，刷新未读数
+watch(() => userStore.isLoggedIn, (isLoggedIn) => {
+  if (isLoggedIn) {
+    fetchUnreadCount()
+    fetchMessageUnreadCount()
+    startUnreadTimer()
+  } else {
+    unreadCount.value = 0
+    messageUnreadCount.value = 0
+    stopUnreadTimer()
+  }
+})
+
+// 定时刷新未读数（每30秒）
+let unreadTimer = null
+function startUnreadTimer() {
+  stopUnreadTimer()
+  unreadTimer = setInterval(() => {
+    if (userStore.isLoggedIn) {
+      fetchUnreadCount()
+      fetchMessageUnreadCount()
+    }
+  }, 30000)
+}
+
+function stopUnreadTimer() {
+  if (unreadTimer) {
+    clearInterval(unreadTimer)
+    unreadTimer = null
+  }
+}
+
+onUnmounted(() => {
+  stopUnreadTimer()
 })
 </script>
 

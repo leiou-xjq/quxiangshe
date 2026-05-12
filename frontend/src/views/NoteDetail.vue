@@ -120,6 +120,15 @@
             :rows="2"
             maxlength="500"
           />
+          <div v-if="aiSuggestions.length > 0 && replyingTo" class="ai-suggestion-bar">
+            <span class="ai-bar-label">AI建议：</span>
+            <span
+              v-for="(s, i) in aiSuggestions"
+              :key="i"
+              class="ai-suggestion-chip"
+              @click="useAiSuggestion(s)"
+            >{{ s }}</span>
+          </div>
           <el-button type="primary" size="small" :loading="commentLoading" @click="submitComment">
             发表评论
           </el-button>
@@ -152,7 +161,7 @@
                 <span class="comment-reply" @click="handleReply(root)">回复</span>
                 <span 
                   class="comment-delete" 
-                  v-if="userStore.isLoggedIn && root.userId === userStore.userInfo?.id"
+                  v-if="userStore.isLoggedIn && root.userId == userStore.userInfo?.id"
                   @click="handleDeleteComment(root)"
                 >
                   删除
@@ -188,7 +197,7 @@
                     <span class="comment-reply" @click="handleReply(item)">回复</span>
                     <span 
                       class="comment-delete" 
-                      v-if="userStore.isLoggedIn && item.userId === userStore.userInfo?.id"
+                      v-if="userStore.isLoggedIn && item.userId == userStore.userInfo?.id"
                       @click="handleDeleteComment(item)"
                     >删除</span>
                   </div>
@@ -257,7 +266,8 @@ import {
   addComment,
   deleteComment,
   likeComment,
-  unlikeComment
+  unlikeComment,
+  getAiReplySuggestions
 } from '@/api/note'
 import { submitReport, TargetType, ReportReason } from '@/api/report'
 
@@ -323,6 +333,11 @@ const reportDescription = ref('')
 const nextCursor = ref(null)
 const rootHasMore = ref(false)
 const rootLoading = ref(false)
+
+// AI回复建议
+const aiSuggestions = ref([])
+const aiLoading = ref(false)
+const currentAiCommentId = ref(null)
 
 const noteId = route.params.id
 
@@ -700,12 +715,12 @@ function handleReply(comment) {
     if (commentInput) {
       commentInput.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-    // 让输入框获得焦点
     const textarea = document.querySelector('.comment-input-box textarea')
     if (textarea) {
       textarea.focus()
     }
   })
+  fetchAiSuggestions(comment.commentId)
 }
 
 // 点赞评论
@@ -770,6 +785,7 @@ async function submitComment() {
     ElMessage.success('评论成功')
     commentContent.value = ''
     replyingTo.value = null
+    aiSuggestions.value = []
     
     loadComments()
     loadNoteDetail()
@@ -803,6 +819,30 @@ async function handleReport() {
   } catch (e) {
     ElMessage.error(e.message || '举报失败')
   }
+}
+
+// 获取AI回复建议
+async function fetchAiSuggestions(commentId) {
+  currentAiCommentId.value = commentId
+  aiLoading.value = true
+  try {
+    const res = await getAiReplySuggestions(commentId)
+    if (res.code === 0 && res.data) {
+      aiSuggestions.value = res.data
+    } else {
+      aiSuggestions.value = []
+    }
+  } catch (e) {
+    aiSuggestions.value = []
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+// 使用AI建议填充评论框
+function useAiSuggestion(suggestion) {
+  commentContent.value = suggestion
+  document.querySelector('.comment-input-box textarea')?.focus()
 }
 
 onMounted(async () => {

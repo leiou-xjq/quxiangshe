@@ -5,6 +5,7 @@ import com.quxiangshe.backend.entity.Note;
 import com.quxiangshe.backend.vo.NoteVO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 笔记服务接口
@@ -50,33 +51,33 @@ public interface INoteService {
      * 点赞笔记
      * @param noteId 笔记ID
      * @param userId 用户ID
-     * @return 是否成功
+     * @return 包含是否点赞和最新点赞数的Map
      */
-    boolean likeNote(Long noteId, Long userId);
-    
+    Map<String, Object> likeNote(Long noteId, Long userId);
+
     /**
      * 取消点赞
      * @param noteId 笔记ID
      * @param userId 用户ID
-     * @return 是否成功
+     * @return 包含是否点赞和最新点赞数的Map
      */
-    boolean unlikeNote(Long noteId, Long userId);
-    
+    Map<String, Object> unlikeNote(Long noteId, Long userId);
+
     /**
      * 收藏笔记
      * @param noteId 笔记ID
      * @param userId 用户ID
-     * @return 是否成功
+     * @return 包含是否收藏和最新收藏数的Map
      */
-    boolean favoriteNote(Long noteId, Long userId);
-    
+    Map<String, Object> favoriteNote(Long noteId, Long userId);
+
     /**
      * 取消收藏
      * @param noteId 笔记ID
      * @param userId 用户ID
-     * @return 是否成功
+     * @return 包含是否收藏和最新收藏数的Map
      */
-    boolean unfavoriteNote(Long noteId, Long userId);
+    Map<String, Object> unfavoriteNote(Long noteId, Long userId);
     
     /**
      * 获取当前用户的笔记列表

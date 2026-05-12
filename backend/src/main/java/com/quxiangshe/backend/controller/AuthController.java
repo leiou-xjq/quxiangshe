@@ -3,7 +3,10 @@ package com.quxiangshe.backend.controller;
 import com.quxiangshe.backend.annotation.RateLimit;
 import com.quxiangshe.backend.common.R;
 import com.quxiangshe.backend.dto.*;
+import com.quxiangshe.backend.entity.User;
+import com.quxiangshe.backend.mapper.UserMapper;
 import com.quxiangshe.backend.service.IAuthService;
+import com.quxiangshe.backend.util.PasswordUtil;
 import com.quxiangshe.backend.vo.LoginVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     
     private final IAuthService authService;
+    private final UserMapper userMapper;
     
     /**
      * 用户注册 - 滑动窗口限流
@@ -195,5 +199,20 @@ public class AuthController {
             ip = ip.split(",")[0].trim();
         }
         return ip;
+    }
+    
+    /**
+     * 测试用：重置用户密码
+     */
+    @Operation(summary = "测试用：重置密码")
+    @PostMapping("/test/reset-password")
+    public R<Void> resetPassword(@RequestParam String username, @RequestParam String newPassword) {
+        User user = userMapper.selectByUsername(username);
+        if (user == null) {
+            return R.fail("用户不存在");
+        }
+        user.setPassword(PasswordUtil.encode(newPassword));
+        userMapper.updateById(user);
+        return R.ok("密码已重置", null);
     }
 }

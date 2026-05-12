@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quxiangshe.backend.config.CommentSortConfig;
 import com.quxiangshe.backend.entity.CommentSortData;
+import com.quxiangshe.backend.entity.CommentTreeResponse;
+import com.quxiangshe.backend.entity.NoteComment;
 import com.quxiangshe.backend.service.impl.CommentSortServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -356,5 +358,27 @@ public class BucketSortStrategy implements SortStrategy {
     @Override
     public List<CommentSortData> getAllComments(Long postId, String sort, String cursor, int size) {
         return getRootComments(postId, sort, cursor, size);
+    }
+
+    @Override
+    public boolean addCommentToTree(Long postId, NoteComment comment, boolean isRoot) {
+        log.warn("BucketSortStrategy 不支持 addCommentToTree");
+        return false;
+    }
+
+    @Override
+    public CommentTreeResponse getCommentTree(Long postId, String sort, String cursor, int size) {
+        log.warn("BucketSortStrategy 不支持 getCommentTree");
+        return CommentTreeResponse.builder()
+                .roots(Collections.emptyList())
+                .totalRoots(0)
+                .cursor(null)
+                .build();
+    }
+
+    @Override
+    public boolean removeCommentAndChildrenFromTree(Long postId, Long commentId, Long parentId) {
+        log.warn("BucketSortStrategy 不支持 removeCommentAndChildrenFromTree");
+        return false;
     }
 }

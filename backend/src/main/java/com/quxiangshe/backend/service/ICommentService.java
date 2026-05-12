@@ -6,13 +6,18 @@ import com.quxiangshe.backend.entity.NoteComment;
 import java.util.List;
 
 public interface ICommentService {
-    
+
     List<NoteComment> getComments(Long noteId, Long rootId);
-    
+
     NoteComment addComment(Long userId, CreateCommentRequest requestBody);
-    
+
     List<NoteComment> getCommentList(Long noteId, int page, int size);
-    
+
+    /**
+     * 根据ID获取评论
+     */
+    NoteComment getCommentById(Long commentId);
+
     /**
      * @param commentId 评论ID
      * @param userId 用户ID（用于验证是否是评论发布者）

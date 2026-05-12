@@ -11,9 +11,9 @@
       <div 
         v-for="msg in messages" 
         :key="msg.id" 
-        :class="['message-item', msg.senderId === currentUserId ? 'my-message' : 'other-message']"
+        :class="['message-item', Number(msg.senderId) === currentUserId ? 'my-message' : 'other-message']"
       >
-        <el-avatar :src="msg.senderId === currentUserId ? myAvatar : targetUser?.avatar" :size="36" />
+        <el-avatar :src="Number(msg.senderId) === currentUserId ? myAvatar : targetUser?.avatar" :size="36" />
         <div class="message-content">
           <div class="message-bubble">
             <template v-if="msg.isRecalled === 1">
@@ -27,7 +27,7 @@
           </div>
           <div class="message-time">{{ formatTime(msg.createdAt) }}</div>
         </div>
-        <div class="message-actions" v-if="msg.senderId === currentUserId && msg.isRecalled !== 1">
+        <div class="message-actions" v-if="Number(msg.senderId) === currentUserId && msg.isRecalled !== 1">
           <el-dropdown @command="handleAction($event, msg)">
             <el-button text size="small">
               <el-icon><MoreFilled /></el-icon>
@@ -81,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getSessionDetail, getSessionInfo, recallMessage, deleteMessage, markSessionRead } from '@/api/message'
@@ -96,8 +96,30 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const sessionId = route.params.sessionId
-const currentUserId = userStore.userInfo?.id
-const myAvatar = userStore.userInfo?.avatar || 'https://picsum.photos/100'
+
+// 从 localStorage 直接获取用户ID（最可靠）
+const currentUserId = computed(() => {
+  try {
+    const info = localStorage.getItem('userInfo')
+    if (info) {
+      const user = JSON.parse(info)
+      return user?.id ? Number(user.id) : null
+    }
+  } catch {}
+  return userStore.userInfo?.id ? Number(userStore.userInfo.id) : null
+})
+
+const myAvatar = computed(() => {
+  try {
+    const info = localStorage.getItem('userInfo')
+    if (info) {
+      const user = JSON.parse(info)
+      return user?.avatar || 'https://picsum.photos/100'
+    }
+  } catch {}
+  return userStore.userInfo?.avatar || 'https://picsum.photos/100'
+})
+
 const token = localStorage.getItem('accessToken')
 
 const messages = ref([])
@@ -131,7 +153,7 @@ async function handleImageUpload(e) {
 
     const tempMsg = {
       id: 'temp_' + Date.now(),
-      senderId: currentUserId,
+      senderId: currentUserId.value,
       messageType: 2,
       content: '',
       imageUrl: url,
@@ -197,7 +219,7 @@ function sendText() {
   const content = inputText.value.trim()
   const tempMsg = {
     id: 'temp_' + Date.now(),
-    senderId: currentUserId,
+    senderId: currentUserId.value,
     messageType: 1,
     content,
     createdAt: new Date().toISOString(),
@@ -222,7 +244,7 @@ function sendEmoji(emoji) {
 
   const tempMsg = {
     id: 'temp_' + Date.now(),
-    senderId: currentUserId,
+    senderId: currentUserId.value,
     messageType: 3,
     content: '',
     imageUrl: emoji,
@@ -278,8 +300,13 @@ function goBack() {
 }
 
 function handleNewMessage(message) {
-  if (message.sessionId == sessionId) {
-    if (message.senderId === currentUserId) {
+  console.log('Received new message:', message, 'sessionId:', sessionId)
+  // 转换为字符串比较，避免类型不一致
+  const msgSessionId = String(message.sessionId)
+  const currentSessionId = String(sessionId)
+  
+  if (msgSessionId === currentSessionId) {
+    if (message.senderId === currentUserId.value) {
       const idx = messages.value.findIndex(m =>
         m.isTemp && m.messageType === message.messageType &&
         (message.messageType === 2 ? m.imageUrl === message.imageUrl : m.content === message.content)
@@ -293,7 +320,12 @@ function handleNewMessage(message) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 确保 userInfo 加载完成
+  if (!userStore.userInfo) {
+    await userStore.fetchUserInfo()
+  }
+  
   loadSessionInfo()
   loadMessages().then(() => {
     markSessionRead(sessionId).catch(() => {})
@@ -346,11 +378,11 @@ onUnmounted(() => {
 }
 
 .my-message {
-  flex-direction: row-reverse;
+  flex-direction: row;
 }
 
 .other-message {
-  flex-direction: row;
+  flex-direction: row-reverse;
 }
 
 .message-content {

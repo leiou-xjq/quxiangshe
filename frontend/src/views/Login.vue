@@ -16,20 +16,14 @@ const smsCountdown = ref(0)
 
 const loginMode = ref('password')
 const form = ref({
-  loginType: 'username',
-  loginValue: '',
+  username: '',
   password: '',
   email: '',
-  code: ''
+  emailCode: ''
 })
 
 const placeholderText = computed(() => {
-  const map = {
-    username: '请输入用户名',
-    phone: '请输入手机号',
-    email: '请输入邮箱'
-  }
-  return map[form.value.loginType]
+  return '请输入用户名'
 })
 
 const validatePassword = (rule, value, callback) => {
@@ -45,8 +39,8 @@ const validatePassword = (rule, value, callback) => {
 
 const rules = computed(() => {
   const baseRules = {
-    loginValue: [
-      { required: true, message: '请输入登录账号', trigger: 'blur' }
+    username: [
+      { required: true, message: '请输入用户名', trigger: 'blur' }
     ],
     password: [
       { required: true, validator: validatePassword, trigger: 'blur' }
@@ -58,7 +52,7 @@ const rules = computed(() => {
       { required: true, message: '请输入邮箱', trigger: 'blur' },
       { pattern: /^[a-zA-Z0-9_+&*-]+(?:\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,7}$/, message: '邮箱格式不正确', trigger: 'blur' }
     ],
-    code: [
+    emailCode: [
       { required: true, message: '请输入验证码', trigger: 'blur' },
       { pattern: /^\d{6}$/, message: '验证码必须是6位数字', trigger: 'blur' }
     ]
@@ -111,14 +105,20 @@ async function handleLogin() {
 
   try {
     if (loginMode.value === 'sms') {
-      const res = await emailLogin({
+      // 验证码登录
+      await userStore.login({
+        loginType: 'emailCode',
         email: form.value.email,
-        code: form.value.code
+        emailCode: form.value.emailCode
       })
-      userStore.setTokens(res.data)
       ElMessage.success('登录成功')
     } else {
-      await userStore.login(form.value)
+      // 密码登录
+      await userStore.login({
+        loginType: 'password',
+        username: form.value.username,
+        password: form.value.password
+      })
       ElMessage.success('登录成功')
     }
 
@@ -169,15 +169,9 @@ async function handleWechatLogin() {
         </el-form-item>
         
         <template v-if="loginMode === 'password'">
-          <el-form-item prop="loginType">
-            <el-radio-group v-model="form.loginType" class="login-type-group">
-              <el-radio-button value="username">用户名</el-radio-button>
-            </el-radio-group>
-          </el-form-item>
-          
-          <el-form-item prop="loginValue" class="form-item">
+          <el-form-item prop="username" class="form-item">
             <el-input 
-              v-model="form.loginValue" 
+              v-model="form.username" 
               :placeholder="placeholderText"
               size="large"
               prefix-icon="User"
@@ -207,9 +201,9 @@ async function handleWechatLogin() {
             />
           </el-form-item>
           
-          <el-form-item prop="code" class="form-item">
+          <el-form-item prop="emailCode" class="form-item">
             <el-input 
-              v-model="form.code" 
+              v-model="form.emailCode" 
               placeholder="请输入验证码"
               size="large"
               prefix-icon="Message"

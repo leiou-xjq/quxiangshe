@@ -122,7 +122,7 @@ router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   
   // 设置页面标题
-  document.title = to.meta.title ? `${to.meta.title} - 小蓝书` : '小蓝书'
+  document.title = to.meta.title ? `${to.meta.title} - 理享` : '理享'
   
   // 检查是否需要登录
   if (!to.meta.public && !userStore.isLoggedIn) {

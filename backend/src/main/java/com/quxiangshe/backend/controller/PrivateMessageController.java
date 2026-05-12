@@ -91,10 +91,18 @@ public class PrivateMessageController {
     
     @Operation(summary = "撤回消息")
     @PutMapping("/recall/{messageId}")
-    public R<String> recallMessage(@PathVariable Long messageId, HttpServletRequest request) {
+    public R<String> recallMessage(@PathVariable String messageId, HttpServletRequest request) {
+        if (messageId.startsWith("temp_")) {
+            return R.fail("临时消息不支持撤回");
+        }
         Long userId = getCurrentUserId(request);
-        boolean success = privateMessageService.recallMessage(messageId, userId);
-        return success ? R.ok("撤回成功", null) : R.fail("撤回失败或已超过2分钟");
+        try {
+            Long messageIdLong = Long.parseLong(messageId);
+            boolean success = privateMessageService.recallMessage(messageIdLong, userId);
+            return success ? R.ok("撤回成功", null) : R.fail("撤回失败或已超过2分钟");
+        } catch (NumberFormatException e) {
+            return R.fail("无效的消息ID");
+        }
     }
     
     @Operation(summary = "删除消息")

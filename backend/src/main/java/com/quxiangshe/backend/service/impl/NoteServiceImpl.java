@@ -279,9 +279,22 @@ public class NoteServiceImpl implements INoteService {
         int offset = (page - 1) * size;
         List<Note> notes = noteMapper.selectNoteList(size, offset);
         
+        if (notes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Long> userIds = notes.stream().map(Note::getUserId).distinct().collect(java.util.stream.Collectors.toList());
+        Map<Long, User> userMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            List<User> users = userMapper.selectBatchIds(userIds);
+            for (User user : users) {
+                userMap.put(user.getId(), user);
+            }
+        }
+        
         List<NoteVO> voList = new ArrayList<>();
         for (Note note : notes) {
-            voList.add(buildNoteVO(note, userId));
+            voList.add(buildNoteVO(note, userId, userMap));
         }
         return voList;
     }
@@ -372,16 +385,18 @@ public class NoteServiceImpl implements INoteService {
      * 点赞笔记
      * 如果已点赞，则取消点赞
      * 使用 Redis + 分布式锁 + Lua 脚本保证原子性
+     * @return 包含isLiked(布尔)和likeCount(整数)的Map
      */
     @Override
-    public boolean likeNote(Long noteId, Long userId) {
+    public Map<String, Object> likeNote(Long noteId, Long userId) {
         // 快速检查 Redis Set 中是否已点赞
         Boolean hasLiked = redisTemplate.opsForSet().isMember(NOTE_LIKED_USERS_KEY + noteId, userId.toString());
         if (Boolean.TRUE.equals(hasLiked)) {
             unlikeNote(noteId, userId);
-            return false;
+            Long count = getRedisLikeCount(noteId);
+            return Map.of("liked", false, "likeCount", count != null ? count.intValue() : 0);
         }
-        
+
         // 获取分布式锁（如果Redisson不可用则跳过）
         RLock lock = redissonClient != null ? redissonClient.getLock("like:note:" + noteId) : null;
         if (lock != null) {
@@ -391,35 +406,36 @@ public class NoteServiceImpl implements INoteService {
             // 双重检查（防止并发）
             hasLiked = redisTemplate.opsForSet().isMember(NOTE_LIKED_USERS_KEY + noteId, userId.toString());
             if (Boolean.TRUE.equals(hasLiked)) {
-                return false;
+                Long count = getRedisLikeCount(noteId);
+                return Map.of("liked", false, "likeCount", count != null ? count.intValue() : 0);
             }
-            
+
             // 检查笔记是否存在
             Note note = noteMapper.selectById(noteId);
             if (note == null || note.getStatus() != 1) {
                 throw new BusinessException(404, "笔记不存在");
             }
-            
+
             // 执行 Lua 脚本 - 原子递增点赞数
             String likeCountKey = NOTE_LIKE_COUNT_KEY + noteId;
             String likedUsersKey = NOTE_LIKED_USERS_KEY + noteId;
             String userLikedKey = USER_LIKED_NOTES_KEY + userId;
-            
-            redisTemplate.execute(
+
+            Long newCount = redisTemplate.execute(
                 RedisScript.of(LIKE_SCRIPT, Long.class),
                 Arrays.asList(likeCountKey, likedUsersKey, userLikedKey),
                 userId.toString()
             );
-            
+
             // 异步更新数据库
             asyncSaveLikeRelationToDb(noteId, userId);
-            
+
             // 记录用户互动活跃度
             activityService.recordInteraction(userId);
             activityService.incrementActivityScore(userId, ACTION_LIKE);
             // 增量更新热度
             incrementHotScore(noteId, 1);
-            
+
             // 发送点赞通知 (异步MQ)
             if (rabbitTemplate != null && !note.getUserId().equals(userId)) {
                 NotificationMessage msg = NotificationMessage.builder()
@@ -432,27 +448,28 @@ public class NoteServiceImpl implements INoteService {
                 rabbitTemplate.convertAndSend(RabbitMQConfig.NOTIFICATION_EXCHANGE,
                         RabbitMQConfig.NOTIFICATION_ROUTING_KEY, msg);
             }
-            
-            return true;
+
+            return Map.of("liked", true, "likeCount", newCount != null ? newCount.intValue() : 1);
         } finally {
             if (lock != null) {
                 lock.unlock();
             }
         }
     }
-    
+
     /**
      * 取消点赞
      * 使用 Redis + 分布式锁 + Lua 脚本保证原子性
+     * @return 包含isLiked(布尔)和likeCount(整数)的Map
      */
     @Override
-    public boolean unlikeNote(Long noteId, Long userId) {
+    public Map<String, Object> unlikeNote(Long noteId, Long userId) {
         // 快速检查
         Boolean hasLiked = redisTemplate.opsForSet().isMember(NOTE_LIKED_USERS_KEY + noteId, userId.toString());
         if (!Boolean.TRUE.equals(hasLiked)) {
             throw new BusinessException(400, "未点赞过该笔记");
         }
-        
+
         // 获取分布式锁（如果Redisson不可用则跳过）
         RLock lock = redissonClient != null ? redissonClient.getLock("like:note:" + noteId) : null;
         if (lock != null) {
@@ -464,25 +481,25 @@ public class NoteServiceImpl implements INoteService {
             if (!Boolean.TRUE.equals(hasLiked)) {
                 throw new BusinessException(400, "未点赞过该笔记");
             }
-            
+
             // 执行 Lua 脚本 - 原子递减点赞数
             String likeCountKey = NOTE_LIKE_COUNT_KEY + noteId;
             String likedUsersKey = NOTE_LIKED_USERS_KEY + noteId;
             String userLikedKey = USER_LIKED_NOTES_KEY + userId;
-            
-            redisTemplate.execute(
+
+            Long newCount = redisTemplate.execute(
                 RedisScript.of(UNLIKE_SCRIPT, Long.class),
                 Arrays.asList(likeCountKey, likedUsersKey, userLikedKey),
                 userId.toString()
             );
-            
+
             // 异步删除数据库记录
             asyncDeleteLikeRelationFromDb(noteId, userId);
-            
+
             // 扣减热度
             incrementHotScore(noteId, -1);
-            
-            return true;
+
+            return Map.of("liked", false, "likeCount", newCount != null ? newCount.intValue() : 0);
         } finally {
             if (lock != null) {
                 lock.unlock();
@@ -520,15 +537,17 @@ public class NoteServiceImpl implements INoteService {
     /**
      * 收藏笔记
      * 使用 Redis + 分布式锁 + Lua 脚本保证原子性
+     * @return 包含isFavorited(布尔)和favoriteCount(整数)的Map
      */
     @Override
-    public boolean favoriteNote(Long noteId, Long userId) {
+    public Map<String, Object> favoriteNote(Long noteId, Long userId) {
         // 快速检查 Redis Set 中是否已收藏
         Boolean hasFavorited = redisTemplate.opsForSet().isMember(NOTE_FAVORITE_USERS_KEY + noteId, userId.toString());
         if (Boolean.TRUE.equals(hasFavorited)) {
-            throw new BusinessException(400, "已收藏过该笔记");
+            Long count = getRedisFavoriteCount(noteId);
+            return Map.of("favorited", true, "favoriteCount", count != null ? count.intValue() : 0);
         }
-        
+
         // 获取分布式锁
         RLock lock = redissonClient != null ? redissonClient.getLock("favorite:note:" + noteId) : null;
         if (lock != null) {
@@ -538,55 +557,58 @@ public class NoteServiceImpl implements INoteService {
             // 双重检查
             hasFavorited = redisTemplate.opsForSet().isMember(NOTE_FAVORITE_USERS_KEY + noteId, userId.toString());
             if (Boolean.TRUE.equals(hasFavorited)) {
-                throw new BusinessException(400, "已收藏过该笔记");
+                Long count = getRedisFavoriteCount(noteId);
+                return Map.of("favorited", true, "favoriteCount", count != null ? count.intValue() : 0);
             }
-            
+
             // 检查笔记是否存在
             Note note = noteMapper.selectById(noteId);
             if (note == null || note.getStatus() != 1) {
                 throw new BusinessException(404, "笔记不存在");
             }
-            
+
             // 执行 Lua 脚本 - 原子递增收藏数
             String favoriteCountKey = NOTE_FAVORITE_COUNT_KEY + noteId;
             String favoritedUsersKey = NOTE_FAVORITE_USERS_KEY + noteId;
             String userFavoritedKey = USER_FAVORITED_NOTES_KEY + userId;
-            
-            redisTemplate.execute(
+
+            Long newCount = redisTemplate.execute(
                 RedisScript.of(FAVORITE_SCRIPT, Long.class),
                 Arrays.asList(favoriteCountKey, favoritedUsersKey, userFavoritedKey),
                 userId.toString()
             );
-            
+
             // 异步保存收藏关系到数据库
             asyncSaveFavoriteRelationToDb(noteId, userId);
-            
+
             // 记录用户互动活跃度
             activityService.recordInteraction(userId);
             activityService.incrementActivityScore(userId, ACTION_FAVORITE);
             // 增量更新热度 +3
             incrementHotScore(noteId, 3);
-            
-            return true;
+
+            return Map.of("favorited", true, "favoriteCount", newCount != null ? newCount.intValue() : 1);
         } finally {
             if (lock != null) {
                 lock.unlock();
             }
         }
     }
-    
+
     /**
      * 取消收藏
      * 使用 Redis + 分布式锁 + Lua 脚本保证原子性
+     * @return 包含isFavorited(布尔)和favoriteCount(整数)的Map
      */
     @Override
-    public boolean unfavoriteNote(Long noteId, Long userId) {
+    public Map<String, Object> unfavoriteNote(Long noteId, Long userId) {
         // 快速检查
         Boolean hasFavorited = redisTemplate.opsForSet().isMember(NOTE_FAVORITE_USERS_KEY + noteId, userId.toString());
         if (!Boolean.TRUE.equals(hasFavorited)) {
-            return false;
+            Long count = getRedisFavoriteCount(noteId);
+            return Map.of("favorited", false, "favoriteCount", count != null ? count.intValue() : 0);
         }
-        
+
         // 获取分布式锁
         RLock lock = redissonClient != null ? redissonClient.getLock("favorite:note:" + noteId) : null;
         if (lock != null) {
@@ -596,24 +618,25 @@ public class NoteServiceImpl implements INoteService {
             // 双重检查
             hasFavorited = redisTemplate.opsForSet().isMember(NOTE_FAVORITE_USERS_KEY + noteId, userId.toString());
             if (!Boolean.TRUE.equals(hasFavorited)) {
-                return false;
+                Long count = getRedisFavoriteCount(noteId);
+                return Map.of("favorited", false, "favoriteCount", count != null ? count.intValue() : 0);
             }
-            
+
             // 执行 Lua 脚本 - 原子递减收藏数
             String favoriteCountKey = NOTE_FAVORITE_COUNT_KEY + noteId;
             String favoritedUsersKey = NOTE_FAVORITE_USERS_KEY + noteId;
             String userFavoritedKey = USER_FAVORITED_NOTES_KEY + userId;
-            
-            redisTemplate.execute(
+
+            Long newCount = redisTemplate.execute(
                 RedisScript.of(UNFAVORITE_SCRIPT, Long.class),
                 Arrays.asList(favoriteCountKey, favoritedUsersKey, userFavoritedKey),
                 userId.toString()
             );
-            
+
             // 异步删除收藏关系
             asyncDeleteFavoriteRelationFromDb(noteId, userId);
-            
-            return true;
+
+            return Map.of("favorited", false, "favoriteCount", newCount != null ? newCount.intValue() : 0);
         } finally {
             if (lock != null) {
                 lock.unlock();
@@ -733,9 +756,16 @@ public class NoteServiceImpl implements INoteService {
     }
     
     /**
-     * 构建笔记VO
+     * 构建笔记VO（无用户缓存）
      */
     private NoteVO buildNoteVO(Note note, Long userId) {
+        return buildNoteVO(note, userId, null);
+    }
+    
+    /**
+     * 构建笔记VO（带用户缓存Map）
+     */
+    private NoteVO buildNoteVO(Note note, Long userId, Map<Long, User> userMap) {
         NoteVO vo = new NoteVO();
         vo.setId(note.getId());
         vo.setUserId(note.getUserId());
@@ -766,7 +796,12 @@ public class NoteServiceImpl implements INoteService {
         vo.setCreatedAt(note.getCreatedAt());
         
         // 获取用户信息
-        User user = userMapper.selectById(note.getUserId());
+        User user = null;
+        if (userMap != null && userMap.containsKey(note.getUserId())) {
+            user = userMap.get(note.getUserId());
+        } else {
+            user = userMapper.selectById(note.getUserId());
+        }
         if (user != null) {
             vo.setNickname(user.getNickname());
             vo.setAvatar(user.getAvatar());
@@ -1242,6 +1277,32 @@ public class NoteServiceImpl implements INoteService {
             log.warn("Redis连接失败，跳过热度更新: noteId={}", noteId);
         } catch (Exception e) {
             log.warn("更新热度失败: noteId={}, increment={}, 原因: {}", noteId, increment, e.getMessage());
+        }
+    }
+
+    /**
+     * 获取Redis中的点赞数（用于返回权威计数）
+     */
+    private Long getRedisLikeCount(Long noteId) {
+        try {
+            String countStr = redisTemplate.opsForValue().get(NOTE_LIKE_COUNT_KEY + noteId);
+            return countStr != null ? Long.parseLong(countStr) : 0L;
+        } catch (Exception e) {
+            log.warn("获取Redis点赞数失败: noteId={}", noteId);
+            return 0L;
+        }
+    }
+
+    /**
+     * 获取Redis中的收藏数（用于返回权威计数）
+     */
+    private Long getRedisFavoriteCount(Long noteId) {
+        try {
+            String countStr = redisTemplate.opsForValue().get(NOTE_FAVORITE_COUNT_KEY + noteId);
+            return countStr != null ? Long.parseLong(countStr) : 0L;
+        } catch (Exception e) {
+            log.warn("获取Redis收藏数失败: noteId={}", noteId);
+            return 0L;
         }
     }
 }

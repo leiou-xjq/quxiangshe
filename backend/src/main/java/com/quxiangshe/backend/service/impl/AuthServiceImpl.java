@@ -98,32 +98,54 @@ public class AuthServiceImpl implements IAuthService {
     
     @Override
     public LoginVO login(LoginRequest request, String ipAddress) {
-        // 根据登录类型获取用户
         User user = null;
-        String loginValue = request.getLoginValue().trim();
+        String loginType = request.getLoginType();
 
-        switch (request.getLoginType()) {
-            case "username":
-                user = userMapper.selectByUsername(loginValue);
-                break;
-            case "phone":
-                user = userMapper.selectByPhone(loginValue);
-                break;
-            case "email":
-                user = userMapper.selectByEmail(loginValue);
-                break;
-            default:
-                throw new BusinessException(400, "不支持的登录类型");
-        }
+        if ("emailCode".equals(loginType)) {
+            // 验证码登录模式
+            String email = request.getEmail();
+            String emailCode = request.getEmailCode();
 
-        // 验证用户存在
-        if (user == null) {
-            throw new BusinessException(1002001, "用户不存在");
-        }
+            if (email == null || email.isEmpty()) {
+                throw new BusinessException(1002005, "邮箱不能为空");
+            }
+            if (emailCode == null || emailCode.isEmpty()) {
+                throw new BusinessException(1004001, "验证码不能为空");
+            }
 
-        // 验证密码
-        if (!PasswordUtil.verify(request.getPassword(), user.getPassword())) {
-            throw new BusinessException(1002002, "密码错误");
+            // 校验验证码
+            if (!emailService.verifyCode(email, emailCode)) {
+                throw new BusinessException(1004002, "验证码错误或已过期");
+            }
+
+            // 查询用户
+            user = userMapper.selectByEmail(email);
+            if (user == null) {
+                throw new BusinessException(1002001, "用户不存在");
+            }
+
+        } else {
+            // 密码登录模式（默认）
+            String username = request.getUsername();
+            String password = request.getPassword();
+
+            if (username == null || username.isEmpty()) {
+                throw new BusinessException(1002005, "用户名不能为空");
+            }
+            if (password == null || password.isEmpty()) {
+                throw new BusinessException(1002004, "密码不能为空");
+            }
+
+            // 查询用户
+            user = userMapper.selectByUsername(username);
+            if (user == null) {
+                throw new BusinessException(1002001, "用户不存在");
+            }
+
+            // 验证密码
+            if (!PasswordUtil.verify(password, user.getPassword())) {
+                throw new BusinessException(1002002, "密码错误");
+            }
         }
 
         // 验证用户状态
