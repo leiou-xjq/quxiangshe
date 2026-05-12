@@ -156,6 +156,15 @@ npm run dev
 
 启动后端后访问: http://localhost:8080/api/doc.html
 
+## 技术文档
+
+详细设计文档请参考：
+
+- [Feed流分发系统设计](docs/feed-design.md)
+- [多级缓存架构设计](docs/cache-design.md)
+- [消息队列设计](docs/mq-design.md)
+- [热点笔记排序设计](docs/hot-score-design.md)
+
 ## 性能优化
 
 1. **多级缓存**: Redis + Caffeine本地缓存
