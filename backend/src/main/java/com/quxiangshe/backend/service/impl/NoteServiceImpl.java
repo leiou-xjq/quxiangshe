@@ -1026,10 +1026,10 @@ public class NoteServiceImpl implements INoteService {
         long startIndex = 0;
         long endIndex = size - 1;
         
-        // 解析游标
+        // 解析游标（数字offset）
         if (cursor != null && !cursor.isEmpty()) {
             try {
-                startIndex = Long.parseLong(cursor) + size;
+                startIndex = Long.parseLong(cursor);
                 endIndex = startIndex + size - 1;
             } catch (NumberFormatException e) {
                 startIndex = 0;

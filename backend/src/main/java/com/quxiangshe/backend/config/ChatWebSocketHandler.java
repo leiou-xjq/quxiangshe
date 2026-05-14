@@ -115,6 +115,22 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    public void sendNotification(Long userId, String type, Object data) {
+        WebSocketSession session = sessions.get(userId);
+        if (session != null && session.isOpen()) {
+            try {
+                String json = objectMapper.writeValueAsString(Map.of(
+                        "type", type,
+                        "data", data
+                ));
+                session.sendMessage(new TextMessage(json));
+                log.debug("Notification sent to userId={}: type={}", userId, type);
+            } catch (IOException e) {
+                log.error("Error sending notification to userId={}", userId, e);
+            }
+        }
+    }
+
     private String getTokenFromSession(WebSocketSession session) {
         String query = session.getUri().getQuery();
         if (query != null && query.contains("token=")) {

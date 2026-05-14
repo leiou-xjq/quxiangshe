@@ -1,4 +1,4 @@
-# 趣享社 - 校园社交平台
+# 理享 - 校园社交平台
 
 基于 Spring Boot + Vue 3 的校园社交平台，支持笔记分享、互动社交、Feed流推荐等功能。
 
@@ -10,7 +10,7 @@
 - **数据库**: MySQL 8.0
 - **缓存**: Redis 7 + Redisson + Caffeine
 - **消息队列**: RabbitMQ 3.12
-- **实时通信**: WebSocket + Pusher
+- **实时通信**: WebSocket
 - **API文档**: Knife4j
 
 ### 前端
@@ -23,8 +23,8 @@
 ### 中间件
 - **对象存储**: 阿里云 OSS
 - **短信服务**: 腾讯云 SMS
-- **AI服务**: 豆包 (字节跳动)
-- **数据同步**: Canal (MySQL binlog)
+- **AI服务**: 豆包大模型 (字节跳动)
+- **向量库**: Milvus
 
 ## 功能特性
 
@@ -46,15 +46,15 @@
 - ✅ Feed流推荐 (推拉结合)
 - ✅ 热门内容计算
 - ✅ 搜索功能
-- ✅ AI内容审核 (异步)
+- ✅ AI内容审核 (RAG+LLM三层递进)
 - ✅ 视频转码处理
 
 ### 系统特性
 - ✅ 异步通知 (MQ)
 - ✅ WebSocket实时推送
 - ✅ 接口限流
-- ✅ 反垃圾检测
 - ✅ 多级缓存
+- ✅ 反作弊检测
 
 ## 快速部署 (Docker Compose)
 
@@ -67,8 +67,8 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/leiou-xjq/quxiangshe.git
-cd quxiangshe
+git clone https://github.com/leiou-xjq/lixiang.git
+cd lixiang
 
 # 2. 复制环境配置
 cp .env.example .env
@@ -108,7 +108,7 @@ docker-compose logs -f backend
 ## 目录结构
 
 ```
-quxiangshe/
+lixiang/
 ├── backend/
 │   ├── src/main/java/com/quxiangshe/backend/
 │   │   ├── config/          # 配置类
@@ -116,18 +116,18 @@ quxiangshe/
 │   │   ├── service/        # 服务层
 │   │   ├── entity/         # 实体类
 │   │   ├── mapper/         # MyBatis映射
-│   │   ├── consumer/      # MQ消费者
-│   │   ├── scheduler/     # 定时任务
-│   │   └── util/          # 工具类
+│   │   ├── consumer/       # MQ消费者
+│   │   ├── scheduler/      # 定时任务
+│   │   └── util/           # 工具类
 │   └── src/main/resources/
 │       └── application.yml
 ├── frontend/
 │   ├── src/
 │   │   ├── api/           # API请求
-│   │   ├── views/        # 页面组件
-│   │   ├── components/   # 通用组件
-│   │   ├── stores/       # Pinia状态
-│   │   └── router/       # 路由配置
+│   │   ├── views/         # 页面组件
+│   │   ├── components/    # 通用组件
+│   │   ├── stores/        # Pinia状态
+│   │   └── router/        # 路由配置
 │   └── package.json
 ├── docker-compose.yml
 ├── .env.example
@@ -169,9 +169,29 @@ npm run dev
 
 1. **多级缓存**: Redis + Caffeine本地缓存
 2. **异步处理**: RabbitMQ异步通知、转码、审核
-3. **Feed流优化**: 推拉结合模式
+3. **Feed流优化**: 推拉结合模式 + 粉丝分层
 4. **数据库**: 合理索引 + 读写分离
 5. **分布式锁**: Redisson实现
+
+## 核心架构设计
+
+### AI内容审核三层架构
+```
+用户提交 → 敏感词检测 → RAG案例匹配 → LLM价值观判断
+```
+
+### Feed智能分发
+```
+小博主(<1K粉): PUSH直推
+中博主(1K-10W粉): PULL拉取
+大博主(>10W粉): HYBRID混合模式
+```
+
+### 热点计算
+```
+hotScore = like×1 + comment×2 + favorite×3 + forward×5
+每日0.9衰减，防止老笔记霸榜
+```
 
 ## 许可证
 

@@ -90,3 +90,10 @@ uploads/
 # ====================
 *.sql.bak
 *.dump
+
+# ====================
+# Internal Documents (do not commit)
+# ====================
+docs/project-documentation.md
+docs/resume-highlights.md
+docs/interview-handbook.md

@@ -1,12 +1,19 @@
 package com.quxiangshe.backend.service.impl;
 
+import com.quxiangshe.backend.config.ChatWebSocketHandler;
 import com.quxiangshe.backend.service.IPushService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PushServiceImpl implements IPushService {
+
+    private final ChatWebSocketHandler chatWebSocketHandler;
 
     @Override
     public void pushNotification(Long userId, String title, String message, String type, Long noteId) {
@@ -15,6 +22,11 @@ public class PushServiceImpl implements IPushService {
             return;
         }
 
-        log.debug("推送功能已禁用 (Pusher依赖未配置): userId={}, title={}", userId, title);
+        chatWebSocketHandler.sendNotification(userId, "notification", Map.of(
+                "title", title,
+                "message", message,
+                "notificationType", type,
+                "noteId", noteId != null ? noteId : ""
+        ));
     }
 }

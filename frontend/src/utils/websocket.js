@@ -1,4 +1,4 @@
-const WS_URL = 'ws://localhost:8080/api/ws/chat'
+const WS_URL = 'ws://localhost:8080/ws/chat'
 const RECONNECT_DELAY = 3000
 const TOKEN_REFRESH_URL = '/api/auth/refresh'
 
@@ -126,6 +126,9 @@ class WebSocketManager {
         break
       case 'unread_update':
         this.emit('unread', data.count)
+        break
+      case 'notification':
+        window.dispatchEvent(new CustomEvent('push-notification', { detail: data.data }))
         break
       default:
         console.log('Unknown message type:', type)

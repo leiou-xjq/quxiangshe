@@ -156,11 +156,9 @@ public class NoteController {
         result.put("hasMore", list.size() == size);
         
         if (!list.isEmpty() && list.size() == size) {
-            NoteVO lastNote = list.get(list.size() - 1);
-            if (lastNote.getCreatedAt() != null) {
-                String nextCursor = lastNote.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() + "_" + lastNote.getId();
-                result.put("nextCursor", nextCursor);
-            }
+            long currentStartIndex = (cursor == null || cursor.isEmpty()) ? 0 : Long.parseLong(cursor);
+            long nextCursor = currentStartIndex + size;
+            result.put("nextCursor", String.valueOf(nextCursor));
         }
         
         return R.ok(result);
