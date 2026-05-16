@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.quxiangshe.backend.config.RabbitMQConfig;
 import com.quxiangshe.backend.dto.CreateNoteRequest;
 import com.quxiangshe.backend.dto.NotificationMessage;
+import com.quxiangshe.backend.dto.ReviewTaskMessage;
 import com.quxiangshe.backend.entity.*;
 import com.quxiangshe.backend.exception.BusinessException;
 import com.quxiangshe.backend.component.FeedPusher;
@@ -37,6 +38,8 @@ import org.redisson.api.RedissonClient;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.concurrent.TimeUnit;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -106,13 +109,13 @@ public class NoteServiceImpl implements INoteService {
             "redis.call('SADD', KEYS[3], KEYS[1]) " +
             "return current";
     
-    // 取消点赞 Lua 脚本 - 原子递减并移除用户关联
-    private static final String UNLIKE_SCRIPT = 
-            "local current = redis.call('DECR', KEYS[1]) " +
-            "if current < 0 then " +
-            "  redis.call('SET', KEYS[1], 0) " +
+    // 取消点赞 Lua 脚本 - 修复DECR竞态：先GET检查再DECR
+    private static final String UNLIKE_SCRIPT =
+            "local current = redis.call('GET', KEYS[1]) " +
+            "if current == false or tonumber(current) <= 0 then " +
             "  return 0 " +
             "end " +
+            "current = redis.call('DECR', KEYS[1]) " +
             "redis.call('SREM', KEYS[2], ARGV[1]) " +
             "return current";
     
@@ -128,13 +131,13 @@ public class NoteServiceImpl implements INoteService {
             "redis.call('SADD', KEYS[3], KEYS[1]) " +
             "return current";
     
-    // 取消收藏 Lua 脚本
-    private static final String UNFAVORITE_SCRIPT = 
-            "local current = redis.call('DECR', KEYS[1]) " +
-            "if current < 0 then " +
-            "  redis.call('SET', KEYS[1], 0) " +
+    // 取消收藏 Lua 脚本 - 修复DECR竞态
+    private static final String UNFAVORITE_SCRIPT =
+            "local current = redis.call('GET', KEYS[1]) " +
+            "if current == false or tonumber(current) <= 0 then " +
             "  return 0 " +
             "end " +
+            "current = redis.call('DECR', KEYS[1]) " +
             "redis.call('SREM', KEYS[2], ARGV[1]) " +
             "return current";
     
@@ -239,13 +242,25 @@ public class NoteServiceImpl implements INoteService {
             final String content = request.getContent();
             final List<String> images = request.getImages();
 
-            // 事务提交后异步执行审核
+            // 事务提交后异步执行审核（通过MQ投递）
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    log.info("触发异步审核: noteId={}, authorId={}, title={}, images={}", noteId, authorId, title,
+                    log.info("投递审核任务到MQ: noteId={}, authorId={}, title={}, images={}", noteId, authorId, title,
                         images != null ? images.size() : 0);
-                    reviewAsyncTask.asyncReview(noteId, authorId, title, content, images);
+                    ReviewTaskMessage message = ReviewTaskMessage.builder()
+                            .noteId(noteId)
+                            .userId(authorId)
+                            .title(title)
+                            .content(content)
+                            .imageUrls(images)
+                            .submitTime(System.currentTimeMillis())
+                            .build();
+                    rabbitTemplate.convertAndSend(
+                            RabbitMQConfig.REVIEW_EXCHANGE,
+                            RabbitMQConfig.REVIEW_ROUTING_KEY,
+                            message
+                    );
                 }
             });
         } else {
@@ -321,8 +336,17 @@ public class NoteServiceImpl implements INoteService {
      */
     private void incrementViewCountWithRedis(Long noteId) {
         RLock lock = redissonClient != null ? redissonClient.getLock("view:note:" + noteId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        if (!lockAcquired) {
+            log.warn("获取浏览量锁失败（静默跳过）: noteId={}", noteId);
+            return;
         }
         try {
             String viewCountKey = NOTE_VIEW_COUNT_KEY + noteId;
@@ -333,7 +357,7 @@ public class NoteServiceImpl implements INoteService {
             // 异步更新数据库
             asyncSaveViewCountToDb(noteId);
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
@@ -397,10 +421,22 @@ public class NoteServiceImpl implements INoteService {
             return Map.of("liked", false, "likeCount", count != null ? count.intValue() : 0);
         }
 
-        // 获取分布式锁（如果Redisson不可用则跳过）
+        // 获取分布式锁（带超时，避免死等）
         RLock lock = redissonClient != null ? redissonClient.getLock("like:note:" + noteId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+                if (!lockAcquired) {
+                    log.warn("获取点赞锁失败: noteId={}, userId={}", noteId, userId);
+                    throw new BusinessException(500, "系统繁忙，请稍后重试");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new BusinessException(500, "系统繁忙，请稍后重试");
+            }
+        } else {
+            throw new BusinessException(500, "系统繁忙，请稍后重试");
         }
         try {
             // 双重检查（防止并发）
@@ -451,7 +487,7 @@ public class NoteServiceImpl implements INoteService {
 
             return Map.of("liked", true, "likeCount", newCount != null ? newCount.intValue() : 1);
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
@@ -470,10 +506,22 @@ public class NoteServiceImpl implements INoteService {
             throw new BusinessException(400, "未点赞过该笔记");
         }
 
-        // 获取分布式锁（如果Redisson不可用则跳过）
+        // 获取分布式锁（带超时，避免死等）
         RLock lock = redissonClient != null ? redissonClient.getLock("like:note:" + noteId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+                if (!lockAcquired) {
+                    log.warn("获取点赞锁失败: noteId={}, userId={}", noteId, userId);
+                    throw new BusinessException(500, "系统繁忙，请稍后重试");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new BusinessException(500, "系统繁忙，请稍后重试");
+            }
+        } else {
+            throw new BusinessException(500, "系统繁忙，请稍后重试");
         }
         try {
             // 双重检查
@@ -501,7 +549,7 @@ public class NoteServiceImpl implements INoteService {
 
             return Map.of("liked", false, "likeCount", newCount != null ? newCount.intValue() : 0);
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
@@ -548,10 +596,22 @@ public class NoteServiceImpl implements INoteService {
             return Map.of("favorited", true, "favoriteCount", count != null ? count.intValue() : 0);
         }
 
-        // 获取分布式锁
+        // 获取分布式锁（带超时，避免死等）
         RLock lock = redissonClient != null ? redissonClient.getLock("favorite:note:" + noteId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+                if (!lockAcquired) {
+                    log.warn("获取收藏锁失败: noteId={}, userId={}", noteId, userId);
+                    throw new BusinessException(500, "系统繁忙，请稍后重试");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new BusinessException(500, "系统繁忙，请稍后重试");
+            }
+        } else {
+            throw new BusinessException(500, "系统繁忙，请稍后重试");
         }
         try {
             // 双重检查
@@ -589,7 +649,7 @@ public class NoteServiceImpl implements INoteService {
 
             return Map.of("favorited", true, "favoriteCount", newCount != null ? newCount.intValue() : 1);
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
@@ -609,10 +669,22 @@ public class NoteServiceImpl implements INoteService {
             return Map.of("favorited", false, "favoriteCount", count != null ? count.intValue() : 0);
         }
 
-        // 获取分布式锁
+        // 获取分布式锁（带超时，避免死等）
         RLock lock = redissonClient != null ? redissonClient.getLock("favorite:note:" + noteId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+                if (!lockAcquired) {
+                    log.warn("获取收藏锁失败: noteId={}, userId={}", noteId, userId);
+                    throw new BusinessException(500, "系统繁忙，请稍后重试");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new BusinessException(500, "系统繁忙，请稍后重试");
+            }
+        } else {
+            throw new BusinessException(500, "系统繁忙，请稍后重试");
         }
         try {
             // 双重检查
@@ -638,7 +710,7 @@ public class NoteServiceImpl implements INoteService {
 
             return Map.of("favorited", false, "favoriteCount", newCount != null ? newCount.intValue() : 0);
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
@@ -1177,8 +1249,17 @@ public class NoteServiceImpl implements INoteService {
      */
     private void incrementForwardCountWithRedis(Long noteId) {
         RLock lock = redissonClient != null ? redissonClient.getLock("forward:note:" + noteId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        if (!lockAcquired) {
+            log.warn("获取转发量锁失败（静默跳过）: noteId={}", noteId);
+            return;
         }
         try {
             String forwardCountKey = NOTE_FORWARD_COUNT_KEY + noteId;
@@ -1189,7 +1270,7 @@ public class NoteServiceImpl implements INoteService {
             // 异步更新数据库
             asyncSaveForwardCountToDb(noteId);
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
@@ -1222,57 +1303,65 @@ public class NoteServiceImpl implements INoteService {
     @Override
     public void incrementHotScore(Long noteId, int increment) {
         if (noteId == null) return;
-        
+
         try {
-            // 1. 获取分布式锁，保证并发安全
-            RLock lock = redissonClient != null ? 
+            // 1. 获取分布式锁（后台任务，失败静默跳过）
+            RLock lock = redissonClient != null ?
                 redissonClient.getLock("hotScore:" + noteId) : null;
+            boolean lockAcquired = false;
             if (lock != null) {
-                lock.lock();
+                try {
+                    lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
-            
+            if (!lockAcquired) {
+                log.warn("获取热度锁失败（静默跳过）: noteId={}", noteId);
+                return;
+            }
+
             try {
                 // 2. 检查黑名单
                 Boolean isBlocked = redisTemplate.opsForSet().isMember(HOT_BLOCK_KEY, noteId.toString());
                 if (Boolean.TRUE.equals(isBlocked)) {
                     return;
                 }
-                
+
                 // 3. 查询当前笔记（从数据库获取）
                 Note note = noteMapper.selectById(noteId);
                 if (note == null || note.getStatus() != 1) {
-                    // 笔记不存在或已删除，移除Redis
                     redisTemplate.opsForZSet().remove(HOT_RANK_KEY, noteId.toString());
                     return;
                 }
-                
+
                 // 4. 计算新的热度值（基于数据库当前值 + 增量）
                 double currentScore = note.getHotScore() != null ? note.getHotScore() : 0;
                 double newScore = currentScore + increment;
                 if (newScore < 0) newScore = 0;
-                
+
                 // 5. 同步写入数据库（主数据源）
                 note.setHotScore(newScore);
                 noteMapper.updateById(note);
-                
+
                 // 6. 同步更新Redis（实时展示）
                 redisTemplate.opsForZSet().add(HOT_RANK_KEY, noteId.toString(), newScore);
-                
+
                 // 7. 维护热门榜单大小，删除最低分记录
                 Long size = redisTemplate.opsForZSet().size(HOT_RANK_KEY);
                 if (size != null && size > MAX_HOT_NOTES) {
                     redisTemplate.opsForZSet().removeRange(HOT_RANK_KEY, 0, size - MAX_HOT_NOTES - 1);
                 }
-                
+
                 // 8. 设置过期时间（7天）
                 redisTemplate.expire(HOT_RANK_KEY, HOT_SCORE_EXPIRE_DAYS, java.util.concurrent.TimeUnit.DAYS);
-                
+
             } finally {
-                if (lock != null) {
+                if (lock != null && lock.isHeldByCurrentThread()) {
                     lock.unlock();
                 }
             }
-            
+
         } catch (RedisConnectionFailureException e) {
             log.warn("Redis连接失败，跳过热度更新: noteId={}", noteId);
         } catch (Exception e) {

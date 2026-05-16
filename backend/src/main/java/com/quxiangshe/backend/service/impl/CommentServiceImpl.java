@@ -28,6 +28,7 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,8 +86,17 @@ public class CommentServiceImpl implements ICommentService {
      */
     private void incrementCommentCountWithRedis(Long noteId) {
         RLock lock = redissonClient != null ? redissonClient.getLock("comment:note:" + noteId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        if (!lockAcquired) {
+            log.warn("获取评论数锁失败（静默跳过）: noteId={}", noteId);
+            return;
         }
         try {
             String commentCountKey = NOTE_COMMENT_COUNT_KEY + noteId;
@@ -97,7 +107,7 @@ public class CommentServiceImpl implements ICommentService {
             // 异步更新数据库
             asyncSaveCommentCountToDb(noteId);
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
@@ -125,8 +135,17 @@ public class CommentServiceImpl implements ICommentService {
      */
     private void decrementCommentCountWithRedis(Long noteId, int decrement) {
         RLock lock = redissonClient != null ? redissonClient.getLock("comment:note:" + noteId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        if (!lockAcquired) {
+            log.warn("获取评论数锁失败（静默跳过）: noteId={}", noteId);
+            return;
         }
         try {
             String commentCountKey = NOTE_COMMENT_COUNT_KEY + noteId;
@@ -139,7 +158,7 @@ public class CommentServiceImpl implements ICommentService {
             // 异步更新数据库
             asyncSaveCommentCountToDb(noteId);
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }

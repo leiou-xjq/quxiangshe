@@ -59,4 +59,10 @@ public interface NoteReviewMapper extends BaseMapper<NoteReview> {
      */
     @Update("UPDATE note_review SET case_imported = 1 WHERE id = #{id}")
     void markAsImported(@Param("id") Long id);
+
+    /**
+     * 根据笔记ID查询审核记录
+     */
+    @Select("SELECT * FROM note_review WHERE note_id = #{noteId} LIMIT 1")
+    NoteReview selectByNoteId(@Param("noteId") Long noteId);
 }

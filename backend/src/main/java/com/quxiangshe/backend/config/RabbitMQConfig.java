@@ -44,6 +44,13 @@ public class RabbitMQConfig {
     public static final String VIDEO_ROUTING_KEY = "video.transcode";
     public static final String VIDEO_DLX_EXCHANGE = "quxiangshe.video.exchange.dlx";
     public static final String VIDEO_DLX_QUEUE = "quxiangshe.video.queue.dlx";
+
+    // 审核任务队列
+    public static final String REVIEW_EXCHANGE = "quxiangshe.review.exchange";
+    public static final String REVIEW_QUEUE = "quxiangshe.review.queue";
+    public static final String REVIEW_ROUTING_KEY = "review.task";
+    public static final String REVIEW_DLX_EXCHANGE = "quxiangshe.review.exchange.dlx";
+    public static final String REVIEW_DLX_QUEUE = "quxiangshe.review.queue.dlx";
     
     @Bean
     public DirectExchange feedPushExchange() {
@@ -208,6 +215,44 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(videoDlxQueue)
                 .to(videoDlxExchange)
                 .with("video.dlq");
+    }
+
+    // 审核队列
+    @Bean
+    public DirectExchange reviewExchange() {
+        return new DirectExchange(REVIEW_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public DirectExchange reviewDlxExchange() {
+        return new DirectExchange(REVIEW_DLX_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue reviewQueue() {
+        return QueueBuilder.durable(REVIEW_QUEUE)
+                .withArgument("x-dead-letter-exchange", REVIEW_DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", "review.dlq")
+                .build();
+    }
+
+    @Bean
+    public Queue reviewDlxQueue() {
+        return QueueBuilder.durable(REVIEW_DLX_QUEUE).build();
+    }
+
+    @Bean
+    public Binding reviewBinding(Queue reviewQueue, DirectExchange reviewExchange) {
+        return BindingBuilder.bind(reviewQueue)
+                .to(reviewExchange)
+                .with(REVIEW_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding reviewDlxBinding(Queue reviewDlxQueue, DirectExchange reviewDlxExchange) {
+        return BindingBuilder.bind(reviewDlxQueue)
+                .to(reviewDlxExchange)
+                .with("review.dlq");
     }
 
     @Bean

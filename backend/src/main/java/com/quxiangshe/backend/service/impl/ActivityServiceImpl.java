@@ -119,19 +119,28 @@ public class ActivityServiceImpl implements IActivityService {
      */
     private void incrementLoginDaysWithRedis(Long userId) {
         RLock lock = redissonClient != null ? redissonClient.getLock("login:user:" + userId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        if (!lockAcquired) {
+            log.warn("获取登录天数锁失败（静默跳过）: userId={}", userId);
+            return;
         }
         try {
             LocalDate today = LocalDate.now();
             String todayStr = today.toString();
-            
+
             // 获取上次登录日期
             String lastLoginKey = USER_LOGIN_DAYS_KEY + userId + ":last";
             String lastLoginDate = redisTemplate.opsForValue().get(lastLoginKey);
-            
+
             String loginDaysKey = USER_LOGIN_DAYS_KEY + userId + ":count";
-            
+
             if (lastLoginDate == null || !lastLoginDate.equals(todayStr)) {
                 // 新的一天，递增登录天数
                 redisTemplate.execute(
@@ -142,7 +151,7 @@ public class ActivityServiceImpl implements IActivityService {
                 redisTemplate.opsForValue().set(lastLoginKey, todayStr);
             }
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
@@ -214,20 +223,29 @@ public class ActivityServiceImpl implements IActivityService {
      */
     private void incrementInteractionWithRedis(Long userId) {
         RLock lock = redissonClient != null ? redissonClient.getLock("activity:user:" + userId) : null;
+        boolean lockAcquired = false;
         if (lock != null) {
-            lock.lock();
+            try {
+                lockAcquired = lock.tryLock(5, 30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        if (!lockAcquired) {
+            log.warn("获取互动锁失败（静默跳过）: userId={}", userId);
+            return;
         }
         try {
             LocalDate today = LocalDate.now();
             String dateStr = today.toString();
-            
+
             // 递增总互动数
             String interactionKey = USER_INTERACTION_COUNT_KEY + userId;
             redisTemplate.execute(
                 RedisScript.of(INTERACTION_INCREMENT_SCRIPT, Long.class),
                 Collections.singletonList(interactionKey)
             );
-            
+
             // 递增今日互动数
             String todayKey = USER_TODAY_INTERACTION_KEY + userId + ":" + dateStr;
             String todayValue = redisTemplate.opsForValue().get(todayKey);
@@ -241,7 +259,7 @@ public class ActivityServiceImpl implements IActivityService {
                 );
             }
         } finally {
-            if (lock != null) {
+            if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
