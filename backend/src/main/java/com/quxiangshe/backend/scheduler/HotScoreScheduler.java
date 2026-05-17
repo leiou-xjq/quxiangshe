@@ -40,7 +40,13 @@ public class HotScoreScheduler {
     
     /**
      * 每日凌晨00:05执行热度衰减
-     * 使用双key保证衰减期间榜单可用
+     * <p>使用双Key交换机制保证衰减期间榜单可用：
+     * <ol>
+     *   <li>将原榜单数据逐条乘以衰减系数后写入临时Key（V2）</li>
+     *   <li>写完后删除原Key，将临时Key重命名为正式Key</li>
+     *   <li>此方案确保读写分离，避免衰减过程中用户查询到不完整数据</li>
+     * </ol>
+     * <p>衰减公式：newScore = oldScore × 0.9
      */
     @Scheduled(cron = "0 5 0 * * ?")
     public void decayHotScore() {
@@ -55,15 +61,18 @@ public class HotScoreScheduler {
             
             log.info("热度榜单有{}条数据，执行衰减", size);
             
+            // 获取榜单中的全部笔记ID
             Set<String> noteIds = redisTemplate.opsForZSet().range(HOT_RANK_KEY, 0, -1);
             if (noteIds == null || noteIds.isEmpty()) {
                 log.info("热度榜单为空，跳过衰减");
                 return;
             }
             
+            // 使用临时Key作为写入目标，避免直接修改正在服务的榜单
             String tempKey = HOT_RANK_KEY_V2;
             redisTemplate.delete(tempKey);
             
+            // 分批次处理，每批500条，避免单次Pipeline传输数据量过大
             List<String> noteIdList = new ArrayList<>(noteIds);
             List<List<String>> batches = new ArrayList<>();
             for (int i = 0; i < noteIdList.size(); i += 500) {
@@ -71,6 +80,7 @@ public class HotScoreScheduler {
             }
             
             for (List<String> batch : batches) {
+                // 使用Pipeline批量获取当前分数，减少网络往返次数
                 List<Object> results = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
                     for (String noteId : batch) {
                         connection.zSetCommands().zScore(HOT_RANK_KEY.getBytes(), noteId.getBytes());
@@ -78,6 +88,7 @@ public class HotScoreScheduler {
                     return null;
                 });
                 
+                // 逐条计算衰减后的分数并写入临时Key
                 int idx = 0;
                 for (String noteId : batch) {
                     Double score = (Double) results.get(idx++);
@@ -88,11 +99,12 @@ public class HotScoreScheduler {
                 }
             }
             
+            // 原子性替换：先删旧Key再重命名，保证数据一致性
             redisTemplate.delete(HOT_RANK_KEY);
             redisTemplate.rename(tempKey, HOT_RANK_KEY);
             redisTemplate.expire(HOT_RANK_KEY, 7, TimeUnit.DAYS);
             
-            // 超过最大限制时，删除最低分的记录
+            // 超过最大限制时，删除最低分的记录（ZSet按分数升序排列，移除低分尾部）
             Long finalSize = redisTemplate.opsForZSet().size(HOT_RANK_KEY);
             if (finalSize != null && finalSize > MAX_HOT_NOTES) {
                 redisTemplate.opsForZSet().removeRange(HOT_RANK_KEY, 0, finalSize - MAX_HOT_NOTES - 1);
@@ -110,18 +122,26 @@ public class HotScoreScheduler {
     
     /**
      * 每小时执行增量同步
+     * <p>基于上次同步时间戳（HOT_LAST_SYNC_KEY），仅同步发生变化的笔记：
+     * <ul>
+     *   <li>状态为1（正常）的笔记 → 加入榜单</li>
+     *   <li>状态非1（下架/删除）的笔记 → 移出榜单</li>
+     * </ul>
+     * <p>使用Pipeline批量写入以提升性能
      */
     @Scheduled(cron = "0 30 * * * ?")
     public void syncHotScoreToRedis() {
         long startTime = System.currentTimeMillis();
         
         try {
+            // 读取上次同步的时间戳，用于增量查询
             String lastSyncStr = redisTemplate.opsForValue().get(HOT_LAST_SYNC_KEY);
             long lastSyncTime = 0;
             if (lastSyncStr != null) {
                 lastSyncTime = Long.parseLong(lastSyncStr);
             }
             
+            // 先统计变化数量，避免无效的全量查询
             Long changedCount = noteMapper.countChangedNotes(lastSyncTime);
             
             if (changedCount == 0) {
@@ -137,6 +157,7 @@ public class HotScoreScheduler {
                 return;
             }
             
+            // 根据笔记状态分流：正常状态加入榜单，其他状态移出榜单
             List<Note> toAdd = new ArrayList<>();
             List<String> toRemove = new ArrayList<>();
             for (Note note : changedNotes) {
@@ -147,6 +168,7 @@ public class HotScoreScheduler {
                 }
             }
             
+            // 使用Pipeline批量写入待添加的笔记，减少网络开销
             if (!toAdd.isEmpty()) {
                 redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
                     for (Note note : toAdd) {
@@ -157,11 +179,13 @@ public class HotScoreScheduler {
                 });
             }
             
+            // 批量移除已下架/删除的笔记
             if (!toRemove.isEmpty()) {
                 redisTemplate.opsForZSet().remove(HOT_RANK_KEY, toRemove.toArray(new String[0]));
             }
             
             redisTemplate.expire(HOT_RANK_KEY, 7, TimeUnit.DAYS);
+            // 更新同步时间戳，作为下一次增量同步的基准
             redisTemplate.opsForValue().set(HOT_LAST_SYNC_KEY, String.valueOf(System.currentTimeMillis()));
             
             long costTime = System.currentTimeMillis() - startTime;

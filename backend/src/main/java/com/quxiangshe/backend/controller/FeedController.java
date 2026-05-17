@@ -17,7 +17,13 @@ import java.util.Map;
 
 /**
  * Feed流控制器
- * 提供个性化信息流推荐接口，使用游标分页
+ * <p>提供个性化信息流推荐接口，使用游标分页代替传统Offset分页，
+ * 避免深度翻页的性能退化问题。Feed源包括：
+ * <ul>
+ *   <li>关注博主的笔记（按发布时间倒序）</li>
+ *   <li>系统推荐的笔记（基于用户兴趣标签）</li>
+ * </ul>
+ * 支持关注Tab红点提示（基于Redis标记位）。</p>
  * 
  * @author 趣享社技术团队
  */
@@ -31,8 +37,13 @@ public class FeedController {
     private final IActivityService activityService;
     
     /**
-     * 获取用户Feed流
-     * 使用游标分页，避免Offset性能问题
+     * 获取用户个性化Feed流
+     * <p>使用游标分页，游标格式为时间戳_笔记ID，保证数据一致性和分页连续性。</p>
+     * 
+     * @param cursor  游标（上一页最后一条笔记的createdAtMillis_id）
+     * @param size    每页数量（最大50）
+     * @param request HTTP请求
+     * @return Feed流数据及分页信息
      */
     @Operation(summary = "获取Feed流")
     @GetMapping
@@ -46,7 +57,7 @@ public class FeedController {
             return R.fail(401, "请先登录");
         }
         
-        // 限制每页数量
+        // 限制每页最大数量，防止恶意拉取
         size = Math.min(size, 50);
         
         List<NoteVO> notes = feedService.getFeed(userId, cursor, size);
@@ -56,7 +67,7 @@ public class FeedController {
         result.put("data", notes);
         result.put("hasMore", notes.size() == size);
         
-        // 生成下一页游标
+        // 游标格式：时间戳_笔记ID，确保分页去重和时序一致性
         if (!notes.isEmpty() && notes.size() == size) {
             NoteVO lastNote = notes.get(notes.size() - 1);
             if (lastNote.getCreatedAt() != null) {
@@ -69,7 +80,11 @@ public class FeedController {
     }
     
     /**
-     * 初始化指定作者的Redis粉丝活跃度排名数据
+     * 初始化Redis粉丝活跃度排名
+     * 计算指定作者的所有粉丝的互动活跃度分数，写入Redis ZSET用于智能分发排序。
+     * 
+     * @param authorId 作者用户ID
+     * @return 执行结果
      */
     @Operation(summary = "初始化Redis粉丝活跃度排名")
     @PostMapping("/init-fans-activity/{authorId}")
@@ -79,7 +94,11 @@ public class FeedController {
     }
     
     /**
-     * 查询关注Tab是否有更新（红点提示）
+     * 查询关注Tab是否有新内容更新
+     * 根据Redis标记位判断，用于前端展示红点提示。
+     * 
+     * @param request HTTP请求
+     * @return hasUpdate字段标识是否有新内容
      */
     @Operation(summary = "查询关注Tab是否有更新")
     @GetMapping("/follow-updated")
@@ -98,7 +117,11 @@ public class FeedController {
     }
     
     /**
-     * 清除关注Tab更新标记（用户点击关注Tab时调用）
+     * 清除关注Tab更新标记
+     * 用户点击关注Tab时调用，清除Redis中的更新标志位。
+     * 
+     * @param request HTTP请求
+     * @return 清除结果
      */
     @Operation(summary = "清除关注Tab更新标记")
     @PostMapping("/follow-updated/clear")

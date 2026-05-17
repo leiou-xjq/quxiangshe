@@ -38,13 +38,16 @@ public class ReconciliationScheduler {
     private static final int DB_BATCH_SIZE = 50;
 
     /**
-     * 每5分钟执行一次计數器对账
+     * 每5分钟执行一次计数器对账
+     * <p>依次对账点赞、收藏、浏览、转发、评论五种计数，
+     * 将Redis中的计数值同步回数据库，确保缓存与数据库最终一致
      */
     @Scheduled(fixedRate = 5 * 60 * 1000)
     public void reconcileNoteCounts() {
         log.info("开始笔记计数器对账任务...");
         long startTime = System.currentTimeMillis();
         
+        // 分别对各类型计数器执行对账
         int likeCountReconciled = reconcileCount(NOTE_LIKE_COUNT_KEY, "likeCount");
         int favoriteCountReconciled = reconcileCount(NOTE_FAVORITE_COUNT_KEY, "favoriteCount");
         int viewCountReconciled = reconcileCount(NOTE_VIEW_COUNT_KEY, "viewCount");
@@ -61,7 +64,13 @@ public class ReconciliationScheduler {
     }
 
     /**
-     * 对账单个计数器类型 - 使用 SCAN 避免阻塞 + 批量处理
+     * 对账单个计数器类型
+     * <p>使用SCAN命令遍历Redis Key（避免KEYS阻塞），
+     * 将Redis中的值与数据库做比对，不一致则以Redis为准回写数据库
+     *
+     * @param keyPrefix      Redis Key前缀，如 "note:like:count:"
+     * @param countFieldName 数据库计数字段名，用于反射设值
+     * @return 对账修正的笔记数量
      */
     private int reconcileCount(String keyPrefix, String countFieldName) {
         int reconciled = 0;
@@ -76,6 +85,7 @@ public class ReconciliationScheduler {
 
             for (String key : keys) {
                 try {
+                    // 从Key中解析出笔记ID
                     String noteIdStr = key.substring(keyPrefix.length());
                     Long noteId = Long.parseLong(noteIdStr);
                     
@@ -104,6 +114,7 @@ public class ReconciliationScheduler {
                     
                     // 如果不一致，收集到批量列表
                     if (redisCount != dbCount) {
+                        // 以Redis为准构建更新对象
                         Note updateNote = new Note();
                         updateNote.setId(noteId);
                         switch (countFieldName) {

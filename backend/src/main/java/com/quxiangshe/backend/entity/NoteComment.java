@@ -6,13 +6,15 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 笔记评论实体类
- * 对应数据库表: note_comment
- * 
- * 抖音风格评论结构：
- * - parentId = 0: 根评论（一级评论）
- * - parentId > 0: 子评论（回复）
- * - rootId: 所属根评论ID（用于前端快速定位）
+ * 笔记评论实体类，对应数据库表 note_comment。
+ * <p>
+ * 采用抖音风格的评论结构，支持多层级回复：
+ * <ul>
+ *   <li>parentId=0 / rootId=0：根评论（一级评论）</li>
+ *   <li>parentId>0：子评论（回复某条评论），rootId 指向所属根评论</li>
+ * </ul>
+ * 支持评论点赞数统计、热度排序以及软删除。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

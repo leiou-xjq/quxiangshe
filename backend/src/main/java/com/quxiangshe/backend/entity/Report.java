@@ -6,8 +6,16 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 举报记录实体类
- * 对应数据库表: report
+ * 举报记录实体类，对应数据库表 report。
+ * <p>
+ * 记录用户对违规内容的举报信息，支持三种举报目标：
+ * <ul>
+ *   <li>targetType=1：举报笔记</li>
+ *   <li>targetType=2：举报评论</li>
+ *   <li>targetType=3：举报用户</li>
+ * </ul>
+ * 举报状态流转：0-待处理 → 1-已处理 / 2-已驳回。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

@@ -13,7 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * 关注控制器
- * 提供关注/取消关注、关注列表、粉丝列表等接口
+ * <p>提供用户关注/取消关注、关注列表（游标分页）、粉丝列表（游标分页）、
+ * 关注状态查询及关注/粉丝数统计等接口。关注关系写入MySQL后同步更新Redis缓存。</p>
  * 
  * @author 趣享社技术团队
  */
@@ -36,6 +37,10 @@ public class FollowController {
     
     /**
      * 关注用户
+     * 
+     * @param userId  被关注的用户ID
+     * @param request HTTP请求（提取登录用户ID）
+     * @return 操作结果
      */
     @Operation(summary = "关注用户")
     @PostMapping("/{userId}")
@@ -53,6 +58,10 @@ public class FollowController {
     
     /**
      * 取消关注
+     * 
+     * @param userId  被取消关注的用户ID
+     * @param request HTTP请求（提取登录用户ID）
+     * @return 操作结果
      */
     @Operation(summary = "取消关注")
     @DeleteMapping("/{userId}")
@@ -69,7 +78,14 @@ public class FollowController {
     }
     
     /**
-     * 获取关注列表
+     * 获取关注列表（游标分页）
+     * 不传userId则默认查询当前登录用户的关注列表。
+     * 
+     * @param userId  目标用户ID（可选）
+     * @param cursor  分页游标
+     * @param size    每页数量
+     * @param request HTTP请求
+     * @return 分页的关注用户列表
      */
     @Operation(summary = "获取关注列表")
     @GetMapping("/following")
@@ -94,7 +110,14 @@ public class FollowController {
     }
     
     /**
-     * 获取粉丝列表
+     * 获取粉丝列表（游标分页）
+     * 不传userId则默认查询当前登录用户的粉丝列表。
+     * 
+     * @param userId  目标用户ID（可选）
+     * @param cursor  分页游标
+     * @param size    每页数量
+     * @param request HTTP请求
+     * @return 分页的粉丝用户列表
      */
     @Operation(summary = "获取粉丝列表")
     @GetMapping("/followers")
@@ -120,7 +143,11 @@ public class FollowController {
     }
     
     /**
-     * 获取关注状态
+     * 查询当前登录用户是否已关注目标用户
+     * 
+     * @param userId  目标用户ID
+     * @param request HTTP请求
+     * @return true=已关注，false=未关注
      */
     @Operation(summary = "获取关注状态")
     @GetMapping("/status/{userId}")
@@ -137,7 +164,10 @@ public class FollowController {
     }
     
     /**
-     * 获取用户关注数
+     * 获取用户的关注数
+     * 
+     * @param userId 用户ID
+     * @return 关注数量
      */
     @Operation(summary = "获取关注数")
     @GetMapping("/count/following/{userId}")
@@ -147,7 +177,10 @@ public class FollowController {
     }
     
     /**
-     * 获取用户粉丝数
+     * 获取用户的粉丝数
+     * 
+     * @param userId 用户ID
+     * @return 粉丝数量
      */
     @Operation(summary = "获取粉丝数")
     @GetMapping("/count/followers/{userId}")

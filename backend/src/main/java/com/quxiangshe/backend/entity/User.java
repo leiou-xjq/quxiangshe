@@ -7,8 +7,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 用户实体类
- * 对应数据库表: user
+ * 用户实体类，对应数据库表 user。
+ * <p>
+ * 用户是系统的核心主体，支持多种登录方式（用户名/手机号/邮箱/微信OpenID）。
+ * 采用BCrypt加密存储密码，支持三种角色（普通用户/审核员/管理员），
+ * 包含完整的个人信息（头像/昵称/性别/生日/简介）及软删除机制。
+ * </p>
  * 
  * @author 趣享社技术团队
  */
@@ -16,8 +20,11 @@ import java.time.LocalDateTime;
 @TableName("user")
 public class User {
     
+    /** 普通用户角色 */
     public static final String ROLE_USER = "USER";
+    /** 审核员角色 */
     public static final String ROLE_MODERATOR = "MODERATOR";
+    /** 管理员角色 */
     public static final String ROLE_ADMIN = "ADMIN";
     
     /**

@@ -7,8 +7,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 笔记实体类
- * 对应数据库表: note
+ * 笔记实体类，对应数据库表 note。
+ * <p>
+ * 笔记是趣享社的核心业务实体，承载用户发布的内容（文字、图片、视频、标签等）。
+ * 支持Feed流随机排序（stableRandom）、热度计算（hotScore）、
+ * 计数统计（点赞/评论/收藏/浏览/转发）以及软删除。
+ * </p>
  *
  * @author 趣享社技术团队
  */

@@ -9,7 +9,11 @@ import org.apache.ibatis.annotations.Select;
 import java.util.List;
 
 /**
- * 笔记收藏Mapper接口
+ * 笔记收藏数据访问层接口，管理用户笔记收藏关系（NoteFavorite）的数据库操作。
+ * <p>
+ * 提供单个及批量收藏状态检查、用户收藏列表分页查询、
+ * 用户已收藏笔记ID列表查询等功能。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

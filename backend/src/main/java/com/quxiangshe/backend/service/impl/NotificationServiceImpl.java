@@ -20,7 +20,16 @@ import java.util.List;
 
 /**
  * 通知服务实现类
- * 
+ *
+ * <p>核心职责：
+ * <ul>
+ *   <li>创建并持久化各类系统通知（点赞、评论、关注、审核结果等）</li>
+ *   <li>通知创建后通过 WebSocket 推送实时消息到客户端</li>
+ *   <li>提供通知列表查询、未读数统计、标记已读、删除等管理功能</li>
+ * </ul>
+ *
+ * <p>所属业务模块：消息通知管理
+ *
  * @author 趣享社技术团队
  */
 @Slf4j
@@ -35,6 +44,14 @@ public class NotificationServiceImpl implements INotificationService {
     @Autowired
     private IPushService pushService;
 
+    /**
+     * 创建通知记录并推送到客户端
+     *
+     * <p>事务操作：先持久化通知记录，再通过 WebSocket 推送。
+     * 推送成功与否不影响事务提交（推送在事务内但 catch 了异常）。
+     *
+     * @param notification 通知实体
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void createNotification(Notification notification) {
@@ -42,6 +59,7 @@ public class NotificationServiceImpl implements INotificationService {
         notification.setCreatedAt(LocalDateTime.now());
         notificationMapper.insert(notification);
 
+        // 如果推送服务可用，通过WebSocket实时推送通知给用户
         if (pushService != null) {
             String title = getNotificationTitle(notification.getType());
             pushService.pushNotification(
@@ -54,6 +72,12 @@ public class NotificationServiceImpl implements INotificationService {
         }
     }
 
+    /**
+     * 根据通知类型获取对应的通知标题文案
+     *
+     * @param type 通知类型（{@link Notification} 中的 TYPE_* 常量）
+     * @return 标题文案
+     */
     private String getNotificationTitle(int type) {
         switch (type) {
             case Notification.TYPE_LIKE:
@@ -71,16 +95,36 @@ public class NotificationServiceImpl implements INotificationService {
         }
     }
     
+    /**
+     * 分页查询用户通知列表
+     *
+     * @param userId 用户ID
+     * @param limit  每页条数
+     * @param offset 偏移量
+     * @return 通知列表
+     */
     @Override
     public List<Notification> getNotifications(Long userId, int limit, int offset) {
         return notificationMapper.selectUserNotifications(userId, limit, offset);
     }
     
+    /**
+     * 获取用户未读通知数
+     *
+     * @param userId 用户ID
+     * @return 未读通知数量，无通知时返回 0
+     */
     @Override
     public Integer getUnreadCount(Long userId) {
         return notificationMapper.selectUnreadCount(userId);
     }
     
+    /**
+     * 将指定通知标记为已读
+     *
+     * @param userId         用户ID（预留扩展，当前未做权限校验）
+     * @param notificationId 通知ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void markAsRead(Long userId, Long notificationId) {
@@ -90,6 +134,14 @@ public class NotificationServiceImpl implements INotificationService {
         notificationMapper.updateById(notification);
     }
     
+    /**
+     * 将用户的所有未读通知标记为已读
+     *
+     * <p>查询该用户所有未读通知，逐条更新状态。
+     * 注意：若未读通知量很大，逐条更新存在性能瓶颈，可后续优化为批量更新。
+     *
+     * @param userId 用户ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void markAllAsRead(Long userId) {
@@ -105,12 +157,27 @@ public class NotificationServiceImpl implements INotificationService {
         }
     }
     
+    /**
+     * 删除指定通知
+     *
+     * @param notificationId 通知ID
+     * @param userId         用户ID（预留扩展）
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteNotification(Long notificationId, Long userId) {
         notificationMapper.deleteById(notificationId);
     }
     
+    /**
+     * 发送点赞通知
+     *
+     * <p>自己给自己点赞不发送通知。通知内容格式为"{昵称}赞了你的笔记"。
+     *
+     * @param noteId     被点赞的笔记ID
+     * @param userId     笔记作者ID（被通知用户）
+     * @param fromUserId 点赞者ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sendLikeNotification(Long noteId, Long userId, Long fromUserId) {
@@ -128,6 +195,16 @@ public class NotificationServiceImpl implements INotificationService {
         createNotification(notification);
     }
     
+    /**
+     * 发送评论通知
+     *
+     * <p>自己评论自己笔记不发送通知。
+     *
+     * @param noteId     评论所属的笔记ID
+     * @param commentId  评论ID
+     * @param userId     笔记作者ID（被通知用户）
+     * @param fromUserId 评论者ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sendCommentNotification(Long noteId, Long commentId, Long userId, Long fromUserId) {
@@ -146,6 +223,12 @@ public class NotificationServiceImpl implements INotificationService {
         createNotification(notification);
     }
     
+    /**
+     * 发送关注通知
+     *
+     * @param userId     被关注者ID（被通知用户）
+     * @param fromUserId 关注者ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sendFollowNotification(Long userId, Long fromUserId) {
@@ -162,6 +245,12 @@ public class NotificationServiceImpl implements INotificationService {
         createNotification(notification);
     }
 
+    /**
+     * 发送审核通过通知
+     *
+     * @param noteId 审核通过的笔记ID
+     * @param userId 笔记作者ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sendReviewPassedNotification(Long noteId, Long userId) {
@@ -176,6 +265,13 @@ public class NotificationServiceImpl implements INotificationService {
         createNotification(notification);
     }
 
+    /**
+     * 发送审核驳回通知
+     *
+     * @param noteId 审核驳回的笔记ID
+     * @param userId 笔记作者ID
+     * @param reason 驳回原因
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sendReviewRejectedNotification(Long noteId, Long userId, String reason) {

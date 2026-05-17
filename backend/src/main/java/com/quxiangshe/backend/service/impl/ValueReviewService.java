@@ -12,7 +12,19 @@ import java.util.*;
 
 /**
  * 基于社会主义核心价值观的内容审核服务
- * 严格按照24字标准进行深度价值观审核
+ * 
+ * 核心职责：通过LLM（豆包）对用户笔记进行价值观 + 论语五常 + 毒鸡汤全方位审核
+ * 业务模块：审核模块（AI审核层）
+ * 
+ * 审核标准（三层维度）：
+ *   1. 社会主义核心价值观24字审核：富强/民主/文明/和谐（国家层面）、
+ *      自由/平等/公正/法治（社会层面）、爱国/敬业/诚信/友善（个人层面）
+ *   2. 论语五常（仁义礼智信）审核：识别扭曲传统价值观的"毒鸡汤"
+ *   3. 毒鸡汤识别：绝对化表述、错误价值观、消极厌世、制造焦虑、性别对立等
+ * 
+ * 审核结果：NORMAL(通过) / VIOLATION(违规) / SUSPICIOUS(疑似违规)
+ * 
+ * 容错机制：LLM调用失败时重试3次（指数退避），全部失败后降级为SUSPICIOUS需人工复核
  * 
  * @author 趣享社技术团队
  */
@@ -68,16 +80,21 @@ public class ValueReviewService {
     }
 
     /**
-     * 价值观审核结果
+     * 价值观审核结果（内部静态类）
+     * 
+     * status取值：
+     *   - NORMAL：内容符合价值观，审核通过
+     *   - SUSPICIOUS：疑似违规，需人工复核
+     *   - VIOLATION：确认违规，禁止发布
      */
     @Data
     public static class ValueReviewResult {
-        private boolean passed;
-        private String status;  // NORMAL/SUSPICIOUS/VIOLATION
-        private String reason;
-        private List<String> violatedValues;
-        private List<String> tags;
-        private double confidence;
+        private boolean passed;              // 是否通过审核
+        private String status;               // 审核状态：NORMAL/SUSPICIOUS/VIOLATION
+        private String reason;               // 违规原因描述
+        private List<String> violatedValues; // 触犯的价值观列表（如：爱国、诚信、仁）
+        private List<String> tags;           // 违规标签（如：毒鸡汤、性别对立）
+        private double confidence;           // 置信度（0~1）
 
         public static ValueReviewResult pass() {
             ValueReviewResult result = new ValueReviewResult();
@@ -280,11 +297,11 @@ public class ValueReviewService {
 请给出审核结果：""";
 
     /**
-     * 价值观审核（调用LLM）
-     *
+     * 价值观审核（调用LLM，不含图片）
+     * 
      * @param title 笔记标题
      * @param content 笔记内容
-     * @param similarCases 相似违规案例（可选）
+     * @param similarCases 相似违规案例（可选，辅助LLM判定）
      * @return 审核结果
      */
     public ValueReviewResult review(String title, String content, String similarCases) {
@@ -292,15 +309,23 @@ public class ValueReviewService {
     }
 
     /**
-     * 价值观审核（调用LLM，支持图片）
-     *
+     * 价值观审核（调用LLM，支持图片多模态审核）
+     * 
+     * 流程：
+     *   1. 检查审核开关是否启用，未启用直接通过
+     *   2. 构建审核Prompt（含社会主义核心价值观、论语五常、毒鸡汤识别规则）
+     *   3. 调用豆包LLM API（带重试机制，指数退避）
+     *   4. 解析LLM返回的JSON格式审核结果
+     *   5. 3次全部失败后降级为SUSPICIOUS（需人工复核）
+     * 
      * @param title 笔记标题
      * @param content 笔记内容
      * @param similarCases 相似违规案例（可选）
-     * @param imageUrls 图片URL列表（可选）
+     * @param imageUrls 图片URL列表（可选，触发多模态审核）
      * @return 审核结果
      */
     public ValueReviewResult review(String title, String content, String similarCases, List<String> imageUrls) {
+        // 审核开关关闭时直接放行
         if (!valueReviewEnabled) {
             log.info("价值观审核未启用，直接通过");
             return ValueReviewResult.pass();
@@ -308,10 +333,12 @@ public class ValueReviewService {
 
         log.info("开始价值观审核: title={}, images={}", title, imageUrls != null ? imageUrls.size() : 0);
 
+        // 使用String.format将标题和内容注入Prompt模板
         String prompt = String.format(VALUE_REVIEW_PROMPT,
             title != null ? title : "",
             content != null ? content : "");
 
+        // 重试机制：最多3次，指数退避（1s, 2s, 4s）
         int maxRetries = 3;
         int baseDelayMs = 1000;
 
@@ -327,11 +354,13 @@ public class ValueReviewService {
             } catch (Exception e) {
                 log.warn("价值观审核第{}次失败: {}", attempt, e.getMessage());
 
+                // 达到最大重试次数，降级返回SUSPICIOUS
                 if (attempt == maxRetries) {
                     log.error("价值观审核全部重试失败: {}", e.getMessage());
                     return ValueReviewResult.suspicious("AI审核失败，需人工复核", Arrays.asList("审核失败"));
                 }
 
+                // 指数退避等待
                 try {
                     int delayMs = baseDelayMs * (int) Math.pow(2, attempt - 1);
                     Thread.sleep(delayMs);
@@ -342,6 +371,7 @@ public class ValueReviewService {
             }
         }
 
+        // 兜底：重试被中断后返回SUSPICIOUS
         return ValueReviewResult.suspicious("AI审核失败，需人工复核", Arrays.asList("审核失败"));
     }
 
@@ -353,9 +383,15 @@ public class ValueReviewService {
     }
 
     /**
-     * 调用豆包LLM（支持图片多模态）
+     * 调用豆包LLM API
+     * 
+     * @param prompt 审核提示词
+     * @param imageUrls 图片URL列表（多模态模式下传入）
+     * @return LLM原始响应文本
+     * @throws RuntimeException API调用或配置异常
      */
     private String callDoubao(String prompt, List<String> imageUrls) {
+        // 配置校验（apiKey和baseUrl缺失时快速失败）
         if (apiKey == null || apiKey.isEmpty() || baseUrl == null || baseUrl.isEmpty()) {
             throw new RuntimeException("豆包API配置未正确设置");
         }
@@ -368,10 +404,11 @@ public class ValueReviewService {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", model);
         requestBody.put("max_tokens", 1024);
-        requestBody.put("temperature", 0.1);
+        requestBody.put("temperature", 0.1);  // 低温度保证审核结果一致性
 
         List<Map<String, Object>> messages = new ArrayList<>();
 
+        // 有图片时使用多模态消息格式（text + image_url）
         if (imageUrls != null && !imageUrls.isEmpty()) {
             List<Map<String, Object>> contentParts = new ArrayList<>();
             contentParts.add(Map.of("type", "text", "text", prompt));
@@ -383,11 +420,13 @@ public class ValueReviewService {
             }
             messages.add(Map.of("role", "user", "content", contentParts));
         } else {
+            // 纯文本模式
             messages.add(Map.of("role", "user", "content", prompt));
         }
 
         requestBody.put("messages", messages);
 
+        // 构建HTTP请求头
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Bearer " + apiKey);
@@ -402,6 +441,7 @@ public class ValueReviewService {
                 throw new RuntimeException("豆包API调用失败: " + response.getStatusCode());
             }
 
+            // 解析OpenAI格式响应：choices[0].message.content
             Map<String, Object> respMap = objectMapper.readValue(response.getBody(), Map.class);
             List<Map<String, Object>> choices = (List<Map<String, Object>>) respMap.get("choices");
             if (choices != null && !choices.isEmpty()) {
@@ -417,11 +457,17 @@ public class ValueReviewService {
     }
 
     /**
-     * 解析LLM响应
+     * 解析LLM响应，提取JSON格式的审核结果
+     * 
+     * 如果LLM返回非JSON文本，尝试从```json```代码块或直接大括号中提取
+     * 解析失败时降级为SUSPICIOUS
+     * 
+     * @param response LLM原始响应
+     * @return 结构化的审核结果
      */
     private ValueReviewResult parseResponse(String response) {
         try {
-            // 尝试提取JSON部分
+            // 从响应中提取JSON部分（兼容LLM可能输出的markdown格式）
             String jsonStr = extractJson(response);
             if (jsonStr == null) {
                 log.warn("无法从响应中提取JSON: {}", response);
@@ -437,6 +483,7 @@ public class ValueReviewService {
             @SuppressWarnings("unchecked")
             List<String> tags = (List<String>) resultMap.get("tags");
 
+            // 根据status字段分发结果
             if ("NORMAL".equalsIgnoreCase(status)) {
                 return ValueReviewResult.pass();
             } else if ("VIOLATION".equalsIgnoreCase(status)) {
@@ -452,12 +499,20 @@ public class ValueReviewService {
     }
 
     /**
-     * 从响应中提取JSON
+     * 从LLM响应文本中提取JSON字符串
+     * 
+     * 策略：
+     *   1. 优先查找```json```标记块
+     *   2. 其次匹配第一个{到最后一个}之间的内容
+     *   3. 都未找到返回null
+     * 
+     * @param response 原始响应文本
+     * @return JSON字符串（null表示提取失败）
      */
     private String extractJson(String response) {
         if (response == null) return null;
 
-        // 尝试查找JSON块
+        // 策略1：查找```json...```代码块
         int jsonStart = response.indexOf("```json");
         if (jsonStart >= 0) {
             int jsonEnd = response.indexOf("```", jsonStart + 7);
@@ -466,7 +521,7 @@ public class ValueReviewService {
             }
         }
 
-        // 尝试直接解析
+        // 策略2：查找首个{和最后一个}之间的文本
         jsonStart = response.indexOf("{");
         if (jsonStart >= 0) {
             int jsonEnd = response.lastIndexOf("}");

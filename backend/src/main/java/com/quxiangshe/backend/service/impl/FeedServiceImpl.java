@@ -50,7 +50,26 @@ import com.fasterxml.jackson.core.type.TypeReference;
 
 /**
  * Feed流服务实现类
- * 实现推模式、拉模式、推拉结合三种推荐策略
+ * 
+ * 核心职责：用户关注Feed流的分页查询、笔记推送、缓存管理、关注Tab红点标记
+ * 业务模块：Feed模块（核心）
+ * 
+ * 三种推荐策略（按博主粉丝量自动选择）：
+ *   1. 推模式（小博主 <1000粉）：新笔记直接推送到所有粉丝收件箱
+ *   2. 拉模式（中博主 1000~10万粉）：笔记写入作者发件箱，粉丝拉取
+ *   3. 推拉结合（大博主 >10万粉）：活跃粉丝推送 + 普通粉丝拉取
+ *      - 活跃粉丝（日活跃度>=120）→ 推送到收件箱
+ *      - 普通粉丝（日活跃度 20~120）→ 从作者发件箱拉取
+ *      - 僵尸粉丝（日活跃度<=20）→ 不推送
+ * 
+ * 缓存体系：
+ *   - Caffeine本地缓存：热点Feed(5分钟)、用户信息(10分钟)
+ *   - Redis二级缓存：关注列表(1天)、粉丝数(6小时)、发件箱(24小时)、用户Feed(15分钟)
+ *   - Redis不可用时自动降级到数据库查询
+ * 
+ * Score设计：
+ *   - 复合Score = timestamp × 1024 + sequence，避免同毫秒多条笔记Score冲突
+ *   - 兼容旧格式：纯时间戳（<1万亿即旧格式）
  * 
  * @author 趣享社技术团队
  */
@@ -218,9 +237,20 @@ public class FeedServiceImpl implements IFeedService {
         return (long) score;
     }
     
+    /**
+     * 获取用户关注Feed流（主页接口）
+     * 
+     * 三级缓存策略：本地缓存 → Redis → 数据库降级
+     * 游标分页格式：timestamp_noteId（如 "1712645678000_123456"）
+     * 
+     * @param userId 当前用户ID
+     * @param cursor 分页游标（null=首页）
+     * @param size 每页数量
+     * @return 笔记VO列表（按发布时间降序）
+     */
     @Override
     public List<NoteVO> getFeed(Long userId, String cursor, int size) {
-        // 尝试从缓存获取，失败时降级到数据库
+        // 优先从缓存获取，Redis异常时降级到数据库
         try {
             return getFeedFromCache(userId, cursor, size);
         } catch (Exception e) {
@@ -231,24 +261,36 @@ public class FeedServiceImpl implements IFeedService {
     
     /**
      * 从缓存获取Feed（核心逻辑）
-     * 三级缓存：本地缓存 → Redis → 数据库
+     * 
+     * 流程：
+     *   1. Caffeine本地缓存命中 → 直接返回（最快）
+     *   2. 获取关注列表（Redis缓存 + 数据库降级）
+     *   3. 过滤黑名单 + 排除自己
+     *   4. 按博主粉丝量分类为小/中/大三类
+     *   5. 并按类型分别使用推/拉/推拉结合模式获取笔记
+     *   6. 合并去重 → 时间排序 → 游标分页 → 写入本地缓存
+     * 
+     * @param userId 用户ID
+     * @param cursor 游标
+     * @param size 每页数量
+     * @return 笔记VO列表
      */
     private List<NoteVO> getFeedFromCache(Long userId, String cursor, int size) {
-        // 1. 先从本地缓存获取
+        // 1. Caffeine本地缓存命中（第一级缓存，速度最快）
         List<NoteVO> localCache = LOCAL_FEED_CACHE.getIfPresent(userId);
         if (localCache != null && localCache.get(0) != null && cursor == null) {
             log.debug("本地缓存命中: userId={}, size={}", userId, localCache.size());
             return processCursorPagination(localCache, cursor, size);
         }
         
-        // 2. 获取关注列表（带缓存）
+        // 2. 获取关注列表（Redis缓存 + 数据库降级）
         List<Long> followingIds = getFollowingIdsCached(userId);
         
         if (followingIds.isEmpty()) {
             return new ArrayList<>();
         }
         
-        // 2. 过滤黑名单用户和用户自己（不显示自己发布的笔记）
+        // 过滤黑名单用户和自己（自己的笔记不应出现在自己的Feed中）
         List<Long> blockedIds = blacklistService.getBlockedUserIds(userId);
         blockedIds.add(userId);  // 排除自己
         followingIds = followingIds.stream()
@@ -259,18 +301,17 @@ public class FeedServiceImpl implements IFeedService {
             return new ArrayList<>();
         }
         
-        // 3. 按博主粉丝量分类（小/中/大）
+        // 3. 按博主粉丝量分类为小/中/大三类
         Map<String, List<Long>> bloggerGroups = classifyBloggersByFollowerCount(followingIds);
         
         List<NoteVO> allNotes = new ArrayList<>();
         
-        // 4. 并行获取各类型博主的笔记
         List<NoteVO> smallNotes = new ArrayList<>();
         List<NoteVO> mediumNotes = new ArrayList<>();
         List<NoteVO> largeNotes = new ArrayList<>();
         
         try {
-            // 小博主：推模式，从收件箱获取
+            // 4. 小博主：推模式，从收件箱获取（最快）
             if (!bloggerGroups.get("small").isEmpty()) {
                 for (Long authorId : bloggerGroups.get("small")) {
                     List<NoteVO> notes = getFromPushInbox(authorId, userId);
@@ -278,12 +319,12 @@ public class FeedServiceImpl implements IFeedService {
                 }
             }
             
-            // 中博主：拉模式，分片聚合获取
+            // 5. 中博主：拉模式，分片聚合获取（减少Redis查询次数）
             if (!bloggerGroups.get("medium").isEmpty()) {
                 mediumNotes = getFromPullOutboxSharded(bloggerGroups.get("medium"), userId);
             }
             
-            // 大博主：推拉结合模式
+            // 6. 大博主：推拉结合模式（活跃粉丝推 + 普通粉丝拉）
             if (!bloggerGroups.get("large").isEmpty()) {
                 for (Long authorId : bloggerGroups.get("large")) {
                     List<NoteVO> notes = getFromHybridMode(authorId, userId);
@@ -298,12 +339,12 @@ public class FeedServiceImpl implements IFeedService {
             log.error("获取Feed失败: userId={}, 原因: {}", userId, e.getMessage(), e);
         }
         
-// 5. 合并所有笔记
+        // 7. 合并所有笔记并按noteId去重
         allNotes.addAll(smallNotes);
         allNotes.addAll(mediumNotes);
         allNotes.addAll(largeNotes);
         
-        // 5.1 去重（根据noteId）
+        // 使用Map去重，保留先出现的记录（small > medium > large优先级）
         allNotes = allNotes.stream()
                 .collect(Collectors.toMap(
                         NoteVO::getId,
@@ -313,23 +354,31 @@ public class FeedServiceImpl implements IFeedService {
                 .stream()
                 .collect(Collectors.toList());
         
-        // 6. 按时间排序
+        // 8. 按创建时间降序排序
         allNotes.sort((a, b) -> {
             if (a.getCreatedAt() == null || b.getCreatedAt() == null) return 0;
             return b.getCreatedAt().compareTo(a.getCreatedAt());
         });
         
-        // 7. 写入本地缓存
+        // 9. 首页数据写入本地缓存（翻页数据不缓存）
         if (cursor == null) {
             LOCAL_FEED_CACHE.put(userId, allNotes);
         }
         
-        // 8. 游标分页
+        // 10. 游标分页截取
         return processCursorPagination(allNotes, cursor, size);
     }
     
     /**
      * 按博主粉丝量分类
+     * 
+     * 分类阈值（可配置）：
+     *   - 小博主: < feed.blogger.small（默认1000）
+     *   - 中博主: feed.blogger.small ~ feed.blogger.medium（默认100000）
+     *   - 大博主: >= feed.blogger.medium
+     * 
+     * @param authorIds 博主ID列表
+     * @return Map包含 "small"/"medium"/"large" 三个分组
      */
     private Map<String, List<Long>> classifyBloggersByFollowerCount(List<Long> authorIds) {
         Map<String, List<Long>> groups = new HashMap<>();
@@ -341,11 +390,11 @@ public class FeedServiceImpl implements IFeedService {
             long followerCount = getFollowerCount(authorId);
             
             if (followerCount < smallBloggerThreshold) {
-                groups.get("small").add(authorId);
+                groups.get("small").add(authorId);      // 小博主：推模式
             } else if (followerCount < mediumBloggerThreshold) {
-                groups.get("medium").add(authorId);
+                groups.get("medium").add(authorId);     // 中博主：拉模式
             } else {
-                groups.get("large").add(authorId);
+                groups.get("large").add(authorId);      // 大博主：推拉结合
             }
         }
         
@@ -353,16 +402,21 @@ public class FeedServiceImpl implements IFeedService {
     }
     
     /**
-     * 根据博主粉丝数决定读取策略（兼容旧逻辑，用于单个作者）
+     * 根据博主粉丝数决定读取策略（单个作者，兼容旧逻辑）
+     * 
+     * @param authorId 博主ID
+     * @param currentUserId 当前用户ID
+     * @param followerCount 粉丝数
+     * @return 笔记VO列表
      */
     private List<NoteVO> getNotesFromAuthor(Long authorId, Long currentUserId, long followerCount) {
         try {
             if (followerCount < smallBloggerThreshold) {
-                // 小博主：推模式，从粉丝收件箱获取
+                // 小博主：推模式 - 从粉丝收件箱获取
                 log.debug("使用推模式获取笔记: authorId={}, followerCount={}", authorId, followerCount);
                 return getFromPushInbox(authorId, currentUserId);
             } else if (followerCount < mediumBloggerThreshold) {
-                // 中博主：拉模式，从作者发件箱获取
+                // 中博主：拉模式 - 从作者发件箱获取
                 log.debug("使用拉模式获取笔记: authorId={}, followerCount={}", authorId, followerCount);
                 return getFromPullOutbox(authorId, currentUserId);
             } else {
@@ -383,24 +437,30 @@ public class FeedServiceImpl implements IFeedService {
     }
     
     /**
-     * 推模式：从粉丝收件箱获取
-     * 收件箱为空时，从数据库查询该作者的笔记并返回
+     * 推模式：从粉丝收件箱获取笔记
+     * 
+     * 收件箱为空时有两种情况：
+     *   - 新关注用户：收件箱尚未有数据 → 从数据库查询降级
+     *   - 微博主已发布笔记：已推送数据 → 从收件箱返回
+     * 
+     * @param authorId 博主ID
+     * @param userId 当前用户ID
+     * @return 笔记VO列表
      */
     private List<NoteVO> getFromPushInbox(Long authorId, Long userId) {
         String key = PUSH_INBOX_PREFIX + userId;
         
-        // 1. 先查Redis收件箱
+        // 1. 先查Redis收件箱（ZSet按Score排列）
         Set<String> noteIds = redisTemplate.opsForZSet().reverseRange(key, 0, -1);
         
         if (noteIds != null && !noteIds.isEmpty()) {
-            // 收件箱有数据，转换为Long并获取详情
             List<Long> ids = noteIds.stream()
                     .map(Long::parseLong)
                     .collect(Collectors.toList());
             return getNoteDetails(ids, userId);
         }
         
-        // 2. 缓存未命中，从数据库查询该作者的最新笔记
+        // 2. 缓存未命中：降级到数据库查询该作者的最新笔记
         return getFromDatabaseFallback(authorId, userId);
     }
     
@@ -795,12 +855,19 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
     
     /**
      * 分批推送笔记到活跃粉丝收件箱（推拉结合模式）
+     * 
+     * 适用于大博主，分批次处理大量粉丝，避免一次性操作堵塞Redis
+     * 每批次按排名范围获取粉丝，并过滤出活跃粉丝才推送
+     * 
+     * @param noteId 笔记ID
+     * @param authorId 作者ID
+     * @param batchNum 当前批次号（0-based）
+     * @param totalBatches 总批次数
      */
     @Override
     public void pushNoteInBatch(Long noteId, Long authorId, int batchNum, int totalBatches) {
         long startTime = System.currentTimeMillis();
         
-        // 获取笔记信息
         Note note = noteMapper.selectById(noteId);
         if (note == null) {
             log.warn("笔记不存在，跳过推送: noteId={}", noteId);
@@ -809,7 +876,7 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
         
         double score = note.getCreatedAt().atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
         
-        // 计算当前批次的粉丝范围
+        // 计算当前批次的粉丝范围：将总粉丝数均分成totalBatches份
         long totalFollowers = getFollowerCount(authorId);
         long fansPerBatch = totalFollowers / totalBatches;
         long startIdx = batchNum * fansPerBatch;
@@ -818,7 +885,7 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
         log.info("分批推送-第{}/{}批: noteId={}, authorId={}, startIdx={}, endIdx={}", 
             batchNum + 1, totalBatches, noteId, authorId, startIdx, endIdx);
         
-        // 获取当前批次的粉丝（带活跃度筛选）
+        // 获取当前批次的活跃粉丝（按排名范围 + 活跃度阈值过滤）
         List<Follow> batchFollowers = getActiveFollowersByRank(authorId, startIdx, endIdx);
         
         if (batchFollowers.isEmpty()) {
@@ -826,13 +893,13 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
             return;
         }
         
-        // 生成复合Score
+        // 生成复合Score保证排序唯一性
         long compositeScore = generateCompositeScore(score);
         
-        // 批量写入收件箱（Redis Pipeline）
+        // Pipeline批量写入收件箱
         pushToActiveFansInBatch(batchFollowers, noteId, authorId, score);
         
-        // 记录推送日志
+        // 异步记录推送日志
         recordPushLogs(batchFollowers, noteId, authorId, FeedPushLog.PUSH_MODE_HYBRID);
         
         long costTime = System.currentTimeMillis() - startTime;
@@ -1042,6 +1109,14 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
         return notes.subList(startIndex, endIndex);
     }
     
+    /**
+     * 推送笔记到Feed流（对外接口，带重试机制）
+     * 
+     * Redis不可用时加入重试队列，后续通过定时任务重试推送
+     * 
+     * @param noteId 笔记ID
+     * @param authorId 作者ID
+     */
     @Override
     public void pushNoteToFeed(Long noteId, Long authorId) {
         try {
@@ -1101,21 +1176,28 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
     }
     
     /**
-     * 推送笔记内部实现
-     * 统一异步推送策略，避免阻塞主流程
+     * 推送笔记内部实现（异步执行，不阻塞发布接口）
+     * 
+     * 根据粉丝数量自动选择推送策略：
+     *   - 0~100粉：直接同步推送（极少数粉丝，无需异步）
+     *   - 100~1000粉：推模式异步（写入所有粉丝收件箱）
+     *   - 1000~10万粉：拉模式（仅写入作者发件箱）
+     *   - >10万粉：推拉结合异步（活跃粉丝推 + 普通粉丝拉）
+     * 
+     * @param noteId 笔记ID
+     * @param authorId 作者ID
      */
     private void pushNoteToFeedInternal(Long noteId, Long authorId) {
         long startTime = System.currentTimeMillis();
         
-        // 获取博主粉丝数量（带缓存）
         long followerCount = getFollowerCount(authorId);
         
         log.info("开始推送笔记: noteId={}, authorId={}, followerCount={}", noteId, authorId, followerCount);
         
-        // 统一异步执行，根据粉丝数选择策略
+        // 统一使用CompletableFuture异步执行，避免阻塞发布接口
         CompletableFuture.runAsync(() -> {
             try {
-                // 验证笔记存在
+                // 验证笔记存在性（可能事务尚未提交）
                 Note note = noteMapper.selectById(noteId);
                 if (note == null) {
                     log.warn("笔记不存在，跳过推送: noteId={}", noteId);
@@ -1123,16 +1205,16 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
                 }
                 
                 if (followerCount < 100) {
-                    // 微博主 (<100)：直接同步推送
+                    // 微博主 (<100粉)：直接同步推送，快速完成
                     pushBySmallBlogger(noteId, authorId, (int) followerCount);
                 } else if (followerCount < smallBloggerThreshold) {
-                    // 小博主 (100-1000)：推模式异步
+                    // 小博主 (100-1000粉)：推模式异步，写入所有粉丝收件箱
                     pushBySmallBlogger(noteId, authorId, (int) followerCount);
                 } else if (followerCount <= mediumBloggerThreshold) {
-                    // 中博主 (1000-10万)：拉模式（发件箱，无需等待）
+                    // 中博主 (1000-10万粉)：拉模式，仅写入作者发件箱
                     pushByMediumBlogger(noteId, authorId);
                 } else {
-                    // 大博主 (>10万)：推拉结合异步
+                    // 大博主 (>10万粉)：推拉结合模式，按活跃度分别处理
                     pushByLargeBlogger(noteId, authorId);
                 }
                 
@@ -1165,8 +1247,16 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
     }
     
     /**
-     * 小博主推送 (<1000粉丝)：纯推模式
-     * 支持平滑切换：950粉预双写，1000粉切换到纯拉
+     * 小博主推送策略 (<1000粉丝)
+     * 
+     * 平滑切换方案：
+     *   - 0~950粉：纯推模式（写入所有粉丝收件箱）
+     *   - 950~1000粉：双写模式（同时写收件箱 + 发件箱），为切换做准备
+     *   - >=1000粉：切换到纯拉模式
+     * 
+     * @param noteId 笔记ID
+     * @param authorId 作者ID
+     * @param followerCount 粉丝数
      */
     private void pushBySmallBlogger(Long noteId, Long authorId, int followerCount) {
         Note note = noteMapper.selectById(noteId);
@@ -1179,16 +1269,16 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
         }
         
         if (followerCount >= PRE_DUAL_WRITE_THRESHOLD && followerCount < SWITCH_TO_PULL_THRESHOLD) {
-            // 950-1000粉：双写模式（同时写收件箱+发件箱）
+            // 950-1000粉过渡期：双写模式，确保平滑切换
             log.info("双写模式: authorId={}, followerCount={}", authorId, followerCount);
             
-            // 写收件箱
+            // 写收件箱（推）
             pushToAllFollowersInBatch(followers, noteId, authorId);
             
-            // 写发件箱
+            // 写发件箱（拉）
             pushToAuthorOutbox(noteId, authorId);
         } else {
-            // <950粉：纯推模式
+            // <950粉：纯推模式，写入所有粉丝收件箱
             log.info("纯推模式: authorId={}, followerCount={}", authorId, followerCount);
             pushToAllFollowersInBatch(followers, noteId, authorId);
         }
@@ -1203,14 +1293,22 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
     }
     
     /**
-     * 大博主推送 (≥10万粉丝)：推拉结合模式
-     * 异步执行，不阻塞发布笔记主流程
+     * 大博主推送 (>=10万粉丝)：推拉结合，异步执行
+     * 
+     * 活跃粉丝（活跃度 >= 120）→ 推送到收件箱
+     * 普通粉丝（活跃度 20~120）→ 写入作者发件箱（拉模式）
+     * 僵尸粉丝（活跃度 <= 20）→ 不推送，节省资源
+     * 
+     * Redis无粉丝分类数据时：触发后台异步初始化 + 立即降级到纯拉模式
+     * 
+     * @param noteId 笔记ID
+     * @param authorId 作者ID
      */
     private void pushByLargeBlogger(Long noteId, Long authorId) {
         final Long finalNoteId = noteId;
         final Long finalAuthorId = authorId;
         
-        // 异步执行推拉结合模式，不阻塞当前请求
+        // 异步执行，不阻塞当前请求
         CompletableFuture.runAsync(() -> {
             try {
                 pushToHybridModeByRedisAsync(finalNoteId, finalAuthorId);
@@ -1677,6 +1775,12 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
     
     // ==================== 关注Tab红点管理 ====================
     
+    /**
+     * 查询用户是否有关注更新（红点标记）
+     * 
+     * @param userId 用户ID
+     * @return true=有更新（需要显示红点）
+     */
     @Override
     public boolean hasFollowUpdate(Long userId) {
         if (userId == null) {
@@ -1688,6 +1792,7 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
             Boolean exists = redisTemplate.hasKey(key);
             return Boolean.TRUE.equals(exists);
         } catch (RedisConnectionFailureException e) {
+            // Redis不可用时降级：不显示红点（保守策略）
             log.warn("Redis连接失败，降级处理: userId={}", userId);
             return false;
         } catch (Exception e) {
@@ -1696,6 +1801,12 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
         }
     }
     
+    /**
+     * 清除用户关注更新标记（用户已读红点）
+     * 使用Lua脚本原子检查并清除，避免竞态条件
+     * 
+     * @param userId 用户ID
+     */
     @Override
     public void clearFollowUpdate(Long userId) {
         if (userId == null) {
@@ -1705,7 +1816,7 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
         String key = FOLLOW_UPDATE_KEY_PREFIX + userId;
         
         try {
-            // 使用Lua脚本原子检查并删除
+            // Lua脚本：EXISTS + DEL 原子执行
             RedisScript<Long> script = RedisScript.of(CHECK_AND_CLEAR_SCRIPT, Long.class);
             redisTemplate.execute(script, Collections.singletonList(key));
             log.debug("清除关注更新标记: userId={}", userId);
@@ -1716,6 +1827,15 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
         }
     }
     
+    /**
+     * 设置所有粉丝的关注Tab更新标记（红点提示）
+     * 
+     * 异步分批执行：将粉丝分批次（每批1000人），使用Lua脚本批量设置Redis标记
+     * 红点标记24小时自动过期
+     * 
+     * @param authorId 作者ID
+     * @param noteId 笔记ID
+     */
     @Override
     public void setFollowUpdateForFans(Long authorId, Long noteId) {
         if (authorId == null || noteId == null) {
@@ -1724,7 +1844,7 @@ private void updateRedisCache(Long userId, List<NoteVO> notes) {
         
         log.info("开始设置粉丝关注更新标记: authorId={}, noteId={}", authorId, noteId);
         
-        // 异步执行，不阻塞主流程
+        // 异步执行，不阻塞主流程（如笔记发布接口）
         CompletableFuture.runAsync(() -> {
             try {
                 setFollowUpdateForFansInternal(authorId);

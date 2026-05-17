@@ -18,7 +18,17 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * 用户服务实现类
- * 
+ *
+ * <p>核心职责：
+ * <ul>
+ *   <li>用户信息查询（当前用户 / 公开信息，含敏感数据脱敏）</li>
+ *   <li>用户资料更新（昵称、头像、性别、简介等），同步至搜索引擎</li>
+ *   <li>密码修改（需验证原密码）</li>
+ *   <li>VO 转换（完整用户信息 / 脱敏公开信息）</li>
+ * </ul>
+ *
+ * <p>所属业务模块：用户信息管理
+ *
  * @author 趣享社技术团队
  */
 @Slf4j
@@ -31,11 +41,24 @@ public class UserServiceImpl implements IUserService {
     
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     
+    /**
+     * 根据ID查询用户实体
+     *
+     * @param id 用户ID
+     * @return 用户实体，不存在时返回 null
+     */
     @Override
     public User getById(Long id) {
         return userMapper.selectById(id);
     }
     
+    /**
+     * 获取当前登录用户的完整信息（含手机号、邮箱等敏感字段）
+     *
+     * @param userId 当前用户ID
+     * @return 用户信息VO
+     * @throws BusinessException 当用户不存在时
+     */
     @Override
     public UserVO getCurrentUser(Long userId) {
         User user = userMapper.selectById(userId);
@@ -45,6 +68,13 @@ public class UserServiceImpl implements IUserService {
         return convertToVO(user);
     }
     
+    /**
+     * 获取用户公开信息（脱敏处理：手机号中间4位、邮箱前缀部分替换为星号）
+     *
+     * @param id 目标用户ID
+     * @return 脱敏后的用户信息VO
+     * @throws BusinessException 当用户不存在时
+     */
     @Override
     public UserVO getUserInfo(Long id) {
         User user = userMapper.selectById(id);
@@ -55,6 +85,16 @@ public class UserServiceImpl implements IUserService {
         return convertToPublicVO(user);
     }
     
+    /**
+     * 更新用户资料
+     *
+     * <p>仅更新请求中非 null 的字段。更新成功后同步到搜索引擎。
+     *
+     * @param userId  当前用户ID
+     * @param request 用户更新请求（含需要修改的字段）
+     * @return 更新后的用户信息VO
+     * @throws BusinessException 当用户不存在时
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserVO updateUser(Long userId, UpdateUserRequest request) {
@@ -63,7 +103,7 @@ public class UserServiceImpl implements IUserService {
             throw new BusinessException(404, "用户不存在");
         }
         
-        // 更新字段
+        // 逐字段判断是否非null，仅更新客户端实际传入的字段
         if (request.getNickname() != null) {
             user.setNickname(request.getNickname());
         }
@@ -95,6 +135,15 @@ public class UserServiceImpl implements IUserService {
         return convertToVO(user);
     }
     
+    /**
+     * 修改密码
+     *
+     * <p>需要验证原密码正确性，且新密码与确认密码一致。
+     *
+     * @param userId  当前用户ID
+     * @param request 修改密码请求（含原密码、新密码、确认密码）
+     * @throws BusinessException 当用户不存在、原密码错误或两次密码不一致时
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void changePassword(Long userId, ChangePasswordRequest request) {
@@ -120,6 +169,12 @@ public class UserServiceImpl implements IUserService {
         log.info("密码修改成功: userId={}", userId);
     }
     
+    /**
+     * 将 User 实体转换为包含完整信息的 UserVO
+     *
+     * @param user 用户实体
+     * @return UserVO，实体为 null 时返回 null
+     */
     @Override
     public UserVO convertToVO(User user) {
         if (user == null) {
@@ -146,7 +201,16 @@ public class UserServiceImpl implements IUserService {
     }
     
     /**
-     * 转换为公开VO（脱敏处理）
+     * 转换为公开用户信息VO（数据脱敏）
+     *
+     * <p>脱敏规则：
+     * <ul>
+     *   <li>手机号：11位手机号中间4位替换为星号（138****1234）</li>
+     *   <li>邮箱：前缀超过2位时只保留前2位，其余替换为星号（ab***@domain.com）</li>
+     * </ul>
+     *
+     * @param user 用户实体
+     * @return 脱敏后的 UserVO
      */
     private UserVO convertToPublicVO(User user) {
         if (user == null) {

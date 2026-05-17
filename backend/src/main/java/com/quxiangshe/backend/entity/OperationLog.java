@@ -6,8 +6,13 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 操作日志实体类
- * 对应数据库表: operation_log
+ * 操作日志实体类，对应数据库表 operation_log。
+ * <p>
+ * 记录管理员和用户的关键操作行为，包含操作人、操作模块、
+ * 请求详情（方法/路径/参数/请求体）、响应结果（状态码/响应体）、
+ * 客户端信息（IP/UserAgent）和执行耗时。
+ * 用于安全审计、合规追溯和系统运维分析。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

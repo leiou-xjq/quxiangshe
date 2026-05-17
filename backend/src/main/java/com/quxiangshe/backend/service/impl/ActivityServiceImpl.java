@@ -29,7 +29,17 @@ import java.util.stream.Collectors;
 
 /**
  * 用户活跃度服务实现类
- * 
+ *
+ * <p>核心职责：
+ * <ul>
+ *   <li>记录用户登录与互动行为，维护用户活跃度数据</li>
+ *   <li>通过 Redis + 分布式锁 + Lua 脚本实现原子计数，异步回写数据库</li>
+ *   <li>每日定时执行活跃度衰减及粉丝分类重算</li>
+ *   <li>增量维护博主粉丝分类（活跃粉丝 / 普通粉丝 / 僵尸粉丝）</li>
+ * </ul>
+ *
+ * <p>所属业务模块：用户活跃度管理
+ *
  * @author 趣享社技术团队
  */
 @Slf4j
@@ -89,6 +99,13 @@ public class ActivityServiceImpl implements IActivityService {
     private static final long REDIS_CACHE_EXPIRE_HOURS = 0;
     private static final long FANS_CLASS_EXPIRE_HOURS = 0;
     
+    /**
+     * 记录用户登录行为
+     *
+     * <p>通过 Redis 原子递增登录天数，异步回写数据库，并同步触发粉丝分类更新。
+     *
+     * @param userId 用户ID
+     */
     @Override
     public void recordLogin(Long userId) {
         try {
@@ -118,6 +135,7 @@ public class ActivityServiceImpl implements IActivityService {
      * 使用 Redis + 分布式锁 + Lua 脚本原子递增登录天数
      */
     private void incrementLoginDaysWithRedis(Long userId) {
+        // 尝试获取分布式锁，防止并发登录导致登录天数计数异常
         RLock lock = redissonClient != null ? redissonClient.getLock("login:user:" + userId) : null;
         boolean lockAcquired = false;
         if (lock != null) {
@@ -127,6 +145,7 @@ public class ActivityServiceImpl implements IActivityService {
                 Thread.currentThread().interrupt();
             }
         }
+        // 获取锁失败时静默跳过，避免阻塞用户登录流程
         if (!lockAcquired) {
             log.warn("获取登录天数锁失败（静默跳过）: userId={}", userId);
             return;
@@ -141,6 +160,7 @@ public class ActivityServiceImpl implements IActivityService {
 
             String loginDaysKey = USER_LOGIN_DAYS_KEY + userId + ":count";
 
+            // 当日首次登录才递增计数，同一天重复登录不重复计数
             if (lastLoginDate == null || !lastLoginDate.equals(todayStr)) {
                 // 新的一天，递增登录天数
                 redisTemplate.execute(
@@ -151,6 +171,7 @@ public class ActivityServiceImpl implements IActivityService {
                 redisTemplate.opsForValue().set(lastLoginKey, todayStr);
             }
         } finally {
+            // 确保锁由当前线程持有才释放，避免误删其他线程的锁
             if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
@@ -180,6 +201,7 @@ public class ActivityServiceImpl implements IActivityService {
                     activity.setActivityScore(5.0);
                     userActivityMapper.insert(activity);
                 } else {
+                    // 已有记录：更新登录天数并重新计算分数
                     if (lastLoginDate != null) {
                         activity.setLastLoginDate(LocalDate.parse(lastLoginDate));
                     }
@@ -193,6 +215,14 @@ public class ActivityServiceImpl implements IActivityService {
         }
     }
     
+    /**
+     * 记录用户互动行为（点赞、收藏、评论、关注等）
+     *
+     * <p>通过 Redis 原子递增互动计数（总互动数和今日互动数），异步回写数据库，
+     * 并触发粉丝分类增量更新。
+     *
+     * @param userId 用户ID
+     */
     @Override
     public void recordInteraction(Long userId) {
         try {
@@ -222,7 +252,8 @@ public class ActivityServiceImpl implements IActivityService {
      * 使用 Redis + 分布式锁 + Lua 脚本原子递增互动数
      */
     private void incrementInteractionWithRedis(Long userId) {
-        RLock lock = redissonClient != null ? redissonClient.getLock("activity:user:" + userId) : null;
+            // 尝试获取分布式锁
+            RLock lock = redissonClient != null ? redissonClient.getLock("activity:user:" + userId) : null;
         boolean lockAcquired = false;
         if (lock != null) {
             try {
@@ -259,6 +290,7 @@ public class ActivityServiceImpl implements IActivityService {
                 );
             }
         } finally {
+            // 确保锁由当前线程持有才释放
             if (lock != null && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
@@ -279,6 +311,7 @@ public class ActivityServiceImpl implements IActivityService {
             if (interactionCountStr != null) {
                 UserActivity activity = userActivityMapper.selectByUserId(userId);
                 if (activity == null) {
+                    // 首次记录：新建活跃度记录，设置今日互动数据
                     activity = new UserActivity();
                     activity.setUserId(userId);
                     activity.setLoginDays(0);
@@ -289,7 +322,8 @@ public class ActivityServiceImpl implements IActivityService {
                     activity.setActivityScore(5.0);
                     userActivityMapper.insert(activity);
                 } else {
-                    // 判断是否需要重置今日计数
+                    // 已有记录：同步互动计数并重新计算活跃度分数
+                    // 判断是否需要重置今日计数（跨日场景下 Redis 已重置但 DB 仍是昨日数据）
                     if (activity.getTodayInteractionDate() == null || !activity.getTodayInteractionDate().equals(today)) {
                         activity.setTodayInteractionCount(todayCountStr != null ? Integer.parseInt(todayCountStr) : 1);
                         activity.setTodayInteractionDate(today);
@@ -304,6 +338,14 @@ public class ActivityServiceImpl implements IActivityService {
         }
     }
     
+    /**
+     * 获取单个用户的活跃度分数
+     *
+     * <p>优先从 Redis 缓存读取，缓存未命中时回查数据库并回填缓存。
+     *
+     * @param userId 用户ID
+     * @return 活跃度分数，默认 5.0
+     */
     @Override
     public double getActivityScore(Long userId) {
         try {
@@ -333,6 +375,14 @@ public class ActivityServiceImpl implements IActivityService {
         }
     }
     
+    /**
+     * 批量获取多个用户的活跃度分数
+     *
+     * <p>直接从数据库查询，对于未找到活跃度记录的用户返回默认值 5.0。
+     *
+     * @param userIds 用户ID列表
+     * @return userId -> 活跃度分数 的映射
+     */
     @Override
     public Map<Long, Double> getActivityScores(List<Long> userIds) {
         Map<Long, Double> result = new HashMap<>();
@@ -368,6 +418,11 @@ public class ActivityServiceImpl implements IActivityService {
         return result;
     }
     
+    /**
+     * 将 Redis 活跃度数据同步到数据库
+     *
+     * <p>当前采用 DB 实时写入模式，Redis 仅作为缓存加速读取，此方法为兼容原有接口保留。
+     */
     @Override
     public void syncToDatabase() {
         log.info("开始同步Redis活跃度数据到数据库...");
@@ -378,6 +433,11 @@ public class ActivityServiceImpl implements IActivityService {
         }
     }
     
+    /**
+     * 每日互动计数重置
+     *
+     * <p>定时任务：每日凌晨 4:00 执行，重置所有用户的今日互动计数。
+     */
     @Override
     @Scheduled(cron = "0 0 4 * * ?")
     public void resetDailyInteractionCount() {
@@ -392,6 +452,13 @@ public class ActivityServiceImpl implements IActivityService {
         }
     }
     
+    /**
+     * 每日活跃度衰减与粉丝分类重算
+     *
+     * <p>定时任务：每日凌晨 0:00 执行。
+     * 对所有用户的活跃度分数按衰减系数（默认 0.8）进行衰减，分批写回数据库，
+     * 同时对大博主（粉丝数超过阈值的博主）重新计算粉丝分类。
+     */
     @Override
     @Scheduled(cron = "0 0 0 * * ?")
     public void decayActivityAndRecalculate() {
@@ -413,7 +480,7 @@ public class ActivityServiceImpl implements IActivityService {
                 }
             }
             
-            // 分批更新数据库，避免SQL过长
+            // 分批更新数据库，避免单次SQL过长导致性能问题
             int totalSize = allActivities.size();
             for (int i = 0; i < totalSize; i += dbBatchSize) {
                 int end = Math.min(i + dbBatchSize, totalSize);
@@ -428,7 +495,7 @@ public class ActivityServiceImpl implements IActivityService {
             
 log.info("活跃度衰减完成: 更新{}条, 耗时{}ms", allActivities.size(), System.currentTimeMillis() - startTime);
             
-            // 对大博主（粉丝数>10万）重新计算粉丝分类
+            // 对大博主（粉丝数>阈值）重新计算粉丝分类
             List<Long> bigBloggerIds = followMapper.selectBloggerIdsByFollowerCount((long) bigBloggerThreshold);
             for (Long authorId : bigBloggerIds) {
                 updateFansActivityRank(authorId);
@@ -442,6 +509,12 @@ log.info("活跃度衰减完成: 更新{}条, 耗时{}ms", allActivities.size(),
         }
     }
     
+    /**
+     * 每小时粉丝分类增量更新
+     *
+     * <p>定时任务：每小时的第 30 分钟执行。
+     * 查询当日有互动的用户，找出他们关注的博主，对这些博主增量更新粉丝分类。
+     */
     @Override
     @Scheduled(cron = "0 30 * * * ?")
     public void hourlySyncFansClassification() {
@@ -535,6 +608,13 @@ log.debug("触发粉丝分类更新: userId={}, 涉及{}个作者", userId, foll
         }
     }
     
+    /**
+     * 每小时全量同步用户活跃度到 Redis
+     *
+     * <p>定时任务：每小时整点执行。
+     * 从数据库批量加载所有用户活跃度数据，通过 Redis Pipeline 批量写入，减少网络往返开销；
+     * 同时同步大博主的粉丝分类数据。
+     */
     @Override
     @Scheduled(cron = "0 0 * * * ?")
     public void syncActivityToRedis() {
@@ -655,6 +735,14 @@ log.debug("触发粉丝分类更新: userId={}, 涉及{}个作者", userId, foll
         log.info("大博主粉丝分类同步完成，耗时{}ms", System.currentTimeMillis() - stepStartTime);
     }
     
+    /**
+     * 更新指定博主的粉丝活跃度分类
+     *
+     * <p>查询该博主的所有粉丝及其活跃度分数，按阈值分为活跃粉丝（score &gt;= activeThreshold）
+     * 和普通粉丝（normalThreshold &lt; score &lt; activeThreshold），结果写入 Redis Set。
+     *
+     * @param authorId 博主（被关注者）用户ID
+     */
     @Override
     public void updateFansActivityRank(Long authorId) {
         long startTime = System.currentTimeMillis();
@@ -748,14 +836,31 @@ log.debug("触发粉丝分类更新: userId={}, 涉及{}个作者", userId, foll
     public static final int ACTION_COMMENT = 3;
     public static final int ACTION_FOLLOW = 4;
     
+    /**
+     * 根据互动类型增量更新活跃度分数
+     *
+     * <p>不同的互动类型对应不同的分数增量：
+     * <ul>
+     *   <li>点赞（ACTION_LIKE）：+3</li>
+     *   <li>收藏（ACTION_FAVORITE）：+3</li>
+     *   <li>评论（ACTION_COMMENT）：+5</li>
+     *   <li>关注（ACTION_FOLLOW）：+2</li>
+     * </ul>
+     * 增量更新该用户所关注的所有博主的粉丝分类。
+     *
+     * @param userId     互动发起用户ID
+     * @param actionType 互动类型（使用 {@code ACTION_*} 常量）
+     */
     @Override
     public void incrementActivityScore(Long userId, int actionType) {
+        // 根据互动类型确定分数增量
         int scoreIncrement;
         switch (actionType) {
             case ACTION_LIKE: scoreIncrement = 3; break;
             case ACTION_FAVORITE: scoreIncrement = 3; break;
             case ACTION_COMMENT: scoreIncrement = 5; break;
             case ACTION_FOLLOW: scoreIncrement = 2; break;
+            // 未知的互动类型，不处理
             default: return;
         }
 
@@ -788,27 +893,43 @@ log.debug("触发粉丝分类更新: userId={}, 涉及{}个作者", userId, foll
         }
     }
 
+    /**
+     * 增量更新博主粉丝分类（增量更新模式）
+     *
+     * <p>根据粉丝的旧分类（wasActive / wasNormal）与新分数阈值判断的结果（nowActive / nowNormal），
+     * 执行相应的 Set 增删操作，避免全量重建带来的性能开销。
+     *
+     * @param authorId 博主ID
+     * @param fanId    粉丝ID
+     * @param newScore 粉丝最新活跃度分数
+     */
     private void incrementalUpdateFansClassification(Long authorId, Long fanId, double newScore) {
         String activeKey = FANS_ACTIVE_PREFIX + authorId + FANS_ACTIVE_SUFFIX;
         String normalKey = FANS_ACTIVE_PREFIX + authorId + FANS_NORMAL_SUFFIX;
 
+        // 检查粉丝当前所属分类
         boolean wasActive = redisTemplate.opsForSet().isMember(activeKey, fanId.toString());
         boolean wasNormal = redisTemplate.opsForSet().isMember(normalKey, fanId.toString());
 
+        // 根据新分数判定应属分类
         boolean nowActive = newScore >= activeThreshold;
         boolean nowNormal = newScore > normalThreshold && newScore < activeThreshold;
 
+        // 根据分类变化执行增删操作
         if (wasActive && !nowActive) {
+            // 从活跃粉丝降级：移出活跃Set，若达到普通门槛则加入普通Set
             redisTemplate.opsForSet().remove(activeKey, fanId.toString());
             if (nowNormal) {
                 redisTemplate.opsForSet().add(normalKey, fanId.toString());
             }
         } else if (wasNormal && !nowNormal) {
+            // 从普通粉丝变化：移出普通Set，若达到活跃门槛则加入活跃Set
             redisTemplate.opsForSet().remove(normalKey, fanId.toString());
             if (nowActive) {
                 redisTemplate.opsForSet().add(activeKey, fanId.toString());
             }
         } else if (!wasActive && !wasNormal && (nowActive || nowNormal)) {
+            // 新粉丝首次进入分类
             if (nowActive) {
                 redisTemplate.opsForSet().add(activeKey, fanId.toString());
             } else {

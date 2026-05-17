@@ -14,6 +14,8 @@ import java.util.Map;
 
 /**
  * 通知控制器
+ * <p>提供通知列表（offset分页）、未读计数、标记已读（单个/全部）、删除通知等接口。
+ * 通知类型包括：点赞、评论、关注、系统消息等。</p>
  * 
  * @author 趣享社技术团队
  */
@@ -25,6 +27,14 @@ public class NotificationController {
     
     private final INotificationService notificationService;
     
+    /**
+     * 获取当前用户的通知列表（offset分页）
+     * 
+     * @param size    每页数量（默认20）
+     * @param offset  偏移量（默认0）
+     * @param request HTTP请求
+     * @return 通知列表
+     */
     @Operation(summary = "获取通知列表")
     @GetMapping("/list")
     public R<List<Notification>> getNotifications(
@@ -36,6 +46,12 @@ public class NotificationController {
         return R.ok(notifications);
     }
     
+    /**
+     * 获取当前用户未读通知数量
+     * 
+     * @param request HTTP请求
+     * @return 未读通知数
+     */
     @Operation(summary = "获取未读数量")
     @GetMapping("/unread-count")
     public R<Integer> getUnreadCount(HttpServletRequest request) {
@@ -44,6 +60,13 @@ public class NotificationController {
         return R.ok(count);
     }
     
+    /**
+     * 标记单条通知为已读
+     * 
+     * @param id      通知ID
+     * @param request HTTP请求
+     * @return 操作结果
+     */
     @Operation(summary = "标记已读")
     @PutMapping("/read/{id}")
     public R<String> markAsRead(@PathVariable Long id, HttpServletRequest request) {
@@ -52,6 +75,12 @@ public class NotificationController {
         return R.ok("标记成功", null);
     }
     
+    /**
+     * 将当前用户所有通知标记为已读
+     * 
+     * @param request HTTP请求
+     * @return 操作结果
+     */
     @Operation(summary = "全部标记已读")
     @PutMapping("/read-all")
     public R<String> markAllAsRead(HttpServletRequest request) {
@@ -60,6 +89,13 @@ public class NotificationController {
         return R.ok("标记成功", null);
     }
     
+    /**
+     * 删除指定通知（仅允许删除自己收到的通知）
+     * 
+     * @param id      通知ID
+     * @param request HTTP请求
+     * @return 操作结果
+     */
     @Operation(summary = "删除通知")
     @DeleteMapping("/{id}")
     public R<String> deleteNotification(@PathVariable Long id, HttpServletRequest request) {

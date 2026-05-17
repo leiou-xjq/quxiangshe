@@ -9,7 +9,11 @@ import org.apache.ibatis.annotations.Select;
 import java.util.List;
 
 /**
- * 用户Mapper接口
+ * 用户数据访问层接口，管理用户（User）的数据库操作。
+ * <p>
+ * 提供用户按用户名/手机号/邮箱/微信OpenID查询、唯一性校验、
+ * 关键词搜索（含随机展示）、批量查询及批量导入等功能。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

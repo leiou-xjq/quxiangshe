@@ -6,8 +6,13 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 笔记审核记录实体类
- * 记录每次笔记发布的审核结果，支持三层审核体系
+ * 笔记审核记录实体类，对应数据库表 note_review。
+ * <p>
+ * 记录每次笔记发布的三层审核结果：第一层敏感词检测（layer_1_passed）、
+ * 第二层RAG相似案例检索（layer_2_rag_score）、第三层大模型判定（layer_3_llm_verdict）。
+ * 审核完成后根据审核状态（通过/疑似/违规）决定笔记上架或下架。
+ * 违规记录可被导入案例库（case_imported）作为后续审核的参考。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

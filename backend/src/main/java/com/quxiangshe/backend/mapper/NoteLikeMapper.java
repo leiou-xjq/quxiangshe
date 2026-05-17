@@ -7,7 +7,11 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 /**
- * 笔记点赞Mapper接口
+ * 笔记点赞数据访问层接口，管理用户笔记点赞关系（NoteLike）的数据库操作。
+ * <p>
+ * 提供单个及批量点赞状态检查、用户已点赞笔记ID列表查询等功能，
+ * 服务于前端点赞状态的批量渲染。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

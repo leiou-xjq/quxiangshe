@@ -8,7 +8,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * 评论排序定时任务
- * 每日凌晨全量校验Redis数据与MySQL一致
+ * <p>每日凌晨执行全量校验，确保Redis中的评论排序数据与MySQL数据库保持一致。
+ * 当Redis缓存因异常丢失或过期时，此任务将重建全部排序数据。
+ *
+ * @author 趣享社技术团队
  */
 @Slf4j
 @Component
@@ -19,7 +22,8 @@ public class CommentSortScheduler {
     
     /**
      * 每日凌晨2点全量校验
-     * 重新从MySQL同步所有笔记的评论数据到Redis
+     * <p>重新从MySQL同步所有笔记的评论排序数据到Redis，
+     * 保障缓存数据的完整性和准确性
      */
     @Scheduled(cron = "0 0 2 * * ?")
     public void verifyCommentSortData() {

@@ -11,7 +11,12 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * 笔记Mapper接口
+ * 笔记数据访问层接口，管理笔记（Note）的数据库操作。
+ * <p>
+ * 提供笔记列表查询、用户笔记查询、发现精彩Feed流（随机/游标分页）、
+ * 热门榜单排序、关键词搜索、批量查询以及稳定随机数批量刷新等功能。
+ * 所有公开查询均过滤 status=1（正常状态）的笔记。
+ * </p>
  * 
  * @author 趣享社技术团队
  */
@@ -212,6 +217,11 @@ public interface NoteMapper extends BaseMapper<Note> {
         """)
     Long countChangedNotes(@Param("lastSyncTime") long lastSyncTime);
     
+    /**
+     * 查询有变化的笔记列表（新增或热度更新），用于Feed流同步。
+     * @param lastSyncTime 上次同步时间（毫秒时间戳）
+     * @return 变化的笔记列表（最多1000条）
+     */
     @Select("""
         SELECT * FROM note 
         WHERE status = 1 

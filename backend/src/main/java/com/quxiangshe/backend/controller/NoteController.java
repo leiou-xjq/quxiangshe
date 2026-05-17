@@ -41,7 +41,10 @@ import java.util.stream.Collectors;;
 
 /**
  * 笔记控制器
- * 提供笔记发布、查询、点赞、收藏、评论等接口
+ * <p>核心业务控制器，聚合笔记发布、查询、互动（点赞/收藏）、评论管理、文件上传等功能。
+ * 所有写操作通过 @RateLimit 注解实现接口级别限流，敏感词检测由AOP统一拦截，
+ * 帖子发布后异步推送到粉丝Feed流（RabbitMQ）。</p>
+ * <p>设计原则：控制器层仅做参数校验和路由转发，业务逻辑全部委托给Service层。</p>
  * 
  * @author 趣享社技术团队
  */
@@ -124,7 +127,7 @@ public class NoteController {
         result.put("data", list);
         result.put("hasMore", list.size() == size);
         
-        // 生成下一页游标（已展示的笔记ID列表）
+        // 生成下一页游标：将本页所有笔记ID以逗号拼接，用于下次请求排除已展示内容
         if (!list.isEmpty() && list.size() == size) {
             String nextCursor = list.stream()
                 .map(note -> note.getId().toString())
@@ -146,7 +149,7 @@ public class NoteController {
             HttpServletRequest request) {
         Long userId = getCurrentUserId(request);
         
-        // 刷新热门笔记热度（带全局限流）
+        // 刷新热门笔记热度分数（带全局分布式锁限流，防止缓存击穿）
         noteService.refreshHotScoreIfNeeded();
         
         List<NoteVO> list = noteService.getPopularNotes(cursor, size, userId);
@@ -155,6 +158,7 @@ public class NoteController {
         result.put("data", list);
         result.put("hasMore", list.size() == size);
         
+        // 游标分页：cursor为起始偏移量，nextCursor = 当前偏移 + 页大小
         if (!list.isEmpty() && list.size() == size) {
             long currentStartIndex = (cursor == null || cursor.isEmpty()) ? 0 : Long.parseLong(cursor);
             long nextCursor = currentStartIndex + size;
@@ -373,7 +377,12 @@ public class NoteController {
     }
     
     /**
-     * 添加评论
+     * 添加评论（支持根评论和子回复）
+     * 写入MySQL后同步更新Redis评论树（FullSortStrategy）
+     * 
+     * @param requestBody 评论请求体（含noteId、parentId、content）
+     * @param request     HTTP请求（提取登录用户ID）
+     * @return 创建后的评论实体
      */
     @Operation(summary = "添加评论")
     @PostMapping("/comment")
@@ -387,10 +396,12 @@ public class NoteController {
         
         Long noteId = requestBody.getNoteId();
         Long parentId = requestBody.getParentId();
+        // 判断是否为根评论（无父评论或parentId为0）
         boolean isRoot = (parentId == null || parentId == 0);
         
         NoteComment comment = commentService.addComment(userId, requestBody);
         
+        // 评论写入MySQL成功后，同步更新Redis中的树状排序缓存
         if (comment != null) {
             fullSortStrategy.addCommentToTree(noteId, comment, isRoot);
         }
@@ -399,7 +410,14 @@ public class NoteController {
     }
     
     /**
-     * 获取评论列表（使用Redis缓存的树状结构）
+     * 获取评论列表（从Redis评论树读取）
+     * 支持热度/时间排序和游标分页，size上限20。
+     * 
+     * @param noteId 笔记ID
+     * @param size   每页数量（默认20，最大20）
+     * @param cursor 分页游标
+     * @param sort   排序方式（hottest=热度，latest=最新）
+     * @return 包含评论树和分页信息的响应
      */
     @Operation(summary = "获取评论列表")
     @GetMapping("/{noteId}/comments")
@@ -418,25 +436,28 @@ public class NoteController {
 
     /**
      * 获取AI回复建议
-     * 用户发评论后调用，获取AI生成的回复建议
+     * 结合笔记标题和评论内容，调用AI服务生成智能回复建议列表。
+     * 
+     * @param commentId 被回复的评论ID
+     * @return AI生成的回复建议文本列表
      */
     @Operation(summary = "获取AI回复建议")
     @GetMapping("/comment/{commentId}/ai-suggestions")
     public R<List<String>> getAiReplySuggestions(@PathVariable Long commentId) {
-        // 获取评论信息
+        // 1. 获取评论信息，确认评论存在
         NoteComment comment = commentService.getCommentById(commentId);
         if (comment == null) {
             return R.fail(404, "评论不存在");
         }
 
-        // 获取笔记内容
+        // 2. 获取笔记上下文，作为AI生成建议的知识背景
         Long noteId = comment.getNoteId();
         Note note = noteService.getNoteById(noteId);
         if (note == null) {
             return R.fail(404, "笔记不存在");
         }
 
-        // 生成AI建议
+        // 3. 调用AI服务生成回复建议（基于笔记标题+评论内容作上下文）
         List<String> suggestions = aiReplySuggestionService.getSuggestions(
                 noteId, commentId, note.getTitle(), comment.getContent());
 
@@ -470,7 +491,7 @@ public class NoteController {
         boolean success = commentService.deleteComment(commentId, userId, isNoteOwner);
         
         if (success && noteId != null) {
-            // 获取被删除评论的parentId，用于判断是否需要级联删除
+            // 同步删除Redis评论树缓存中的节点及子评论（级联删除）
             NoteComment deletedComment = commentSortService.getCommentById(commentId);
             Long parentId = deletedComment != null ? deletedComment.getParentId() : null;
             fullSortStrategy.removeCommentAndChildrenFromTree(noteId, commentId, parentId);
@@ -480,7 +501,11 @@ public class NoteController {
     }
     
     /**
-     * 上传图片
+     * 上传图片到OSS
+     * 校验：非空、大小限制5MB、仅限image/*类型。
+     * 
+     * @param file 上传的图片文件
+     * @return OSS图片访问URL
      */
     @Operation(summary = "上传图片")
     @PostMapping("/upload")
@@ -507,7 +532,10 @@ public class NoteController {
     }
     
     /**
-     * 上传视频
+     * 上传视频到OSS
+     * 
+     * @param file 上传的视频文件
+     * @return OSS视频访问URL
      */
     @Operation(summary = "上传视频")
     @PostMapping("/upload-video")
@@ -525,7 +553,11 @@ public class NoteController {
     }
     
     /**
-     * 上传视频（带自动封面提取）
+     * 上传视频并自动提取封面帧
+     * 上传视频到OSS后自动截取首帧作为封面图一并上传。
+     * 
+     * @param file 上传的视频文件
+     * @return Map包含videoUrl（视频地址）和coverUrl（封面地址）
      */
     @Operation(summary = "上传视频并自动提取封面")
     @PostMapping("/upload-video-with-cover")

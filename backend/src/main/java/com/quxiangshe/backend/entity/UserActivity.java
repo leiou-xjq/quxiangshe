@@ -7,9 +7,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 用户活跃度实体类
- * 对应数据库表: user_activity
- * 记录用户登录和互动数据，用于推拉结合模式判断活跃粉丝
+ * 用户活跃度实体类，对应数据库表 user_activity。
+ * <p>
+ * 记录每位用户的登录天数、累计互动次数和活跃度分数。
+ * 活跃分数计算公式：5(基础分) + loginDays × 5 + min(interactionCount × 3, 200)。
+ * 分数超过50分判定为活跃用户，用于推拉结合模式的Feed推送目标筛选。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

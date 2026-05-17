@@ -24,9 +24,21 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * 异步审核任务
- * 将耗时的审核逻辑异步化，确保发布接口快速响应
  * 
- * 审核流程：全程由LLM进行价值观和敏感词审核
+ * 核心职责：将耗时的内容审核逻辑异步化，确保发布接口快速响应
+ * 业务模块：审核模块（异步层）
+ * 
+ * 审核流程：
+ *   1. 发布接口保存笔记后通过 MQ 投递审核消息
+ *   2. MQ消费者调用本类的 asyncReview() 方法
+ *   3. 全程由 LLM（豆包/价值观审核服务）进行内容审核
+ *   4. 审核通过：status=1，触发Feed分发、视频转码
+ *   5. 审核违规：status=2，发送审核未通过通知
+ * 
+ * 设计要点：
+ *   - @Async("reviewExecutor") 确保审核在独立线程池中执行
+ *   - CompletableFuture 支持异步回调，不阻塞MQ消费者
+ *   - 异常时返回违规结果，保证笔记不会处于待审核挂起状态
  * 
  * @author 趣享社技术团队
  */
@@ -58,37 +70,54 @@ public class ReviewAsyncTask {
     private boolean reviewEnabled;
 
 /**
-     * 异步执行内容审核
-     * 不阻塞主发布流程
-     *
+     * 异步执行内容审核（不含图片）
+     * 
      * @param noteId 笔记ID
      * @param userId 发布者ID
-     * @param title 标题
-     * @param content 内容
+     * @param title 笔记标题
+     * @param content 笔记内容
+     * @return CompletableFuture包装的审核结果
      */
     @Async("reviewExecutor")
     public CompletableFuture<ReviewResult> asyncReview(Long noteId, Long userId,
-                                                        String title, String content) {
+                                                         String title, String content) {
         return asyncReview(noteId, userId, title, content, null);
     }
 
     /**
-     * 异步执行内容审核（支持图片审核）
+     * 异步执行内容审核（支持图片多模态审核）
+     * 
+     * 流程：
+     *   1. 创建审核记录（status=待审核）
+     *   2. 调用LLM价值观审核服务（含图片）
+     *   3. 综合判定结果
+     *   4. 根据判定更新笔记状态并触发后续动作
+     * 
+     * @param noteId 笔记ID
+     * @param userId 发布者ID
+     * @param title 标题
+     * @param content 内容
+     * @param imageUrls 图片URL列表（可选，用于多模态审核）
+     * @return CompletableFuture包装的审核结果
      */
     @Async("reviewExecutor")
     public CompletableFuture<ReviewResult> asyncReview(Long noteId, Long userId,
-                                                        String title, String content, List<String> imageUrls) {
+                                                         String title, String content, List<String> imageUrls) {
         log.info("开始异步审核: noteId={}, userId={}, title={}, images={}", noteId, userId, title,
             imageUrls != null ? imageUrls.size() : 0);
         long startTime = System.currentTimeMillis();
 
         try {
+            // 1. 创建审核记录（status=待审核）
             NoteReview review = createReviewRecord(noteId, userId, title, content);
 
+            // 2. 调用LLM价值观审核服务进行内容判定
             ValueReviewService.ValueReviewResult valueResult = valueReviewService.review(title, content, null, imageUrls);
 
+            // 3. 综合LLM判定结果生成最终审核结论
             ReviewResult finalResult = combineResult(review, valueResult);
 
+            // 4. 根据审核结果处理笔记状态（通过/违规）
             handleReviewResult(noteId, finalResult);
 
             log.info("异步审核完成: noteId={}, passed={}, status={}, reason={}, cost={}ms",
@@ -97,6 +126,7 @@ public class ReviewAsyncTask {
             return CompletableFuture.completedFuture(finalResult);
 
         } catch (Exception e) {
+            // 审核系统异常时默认标记为违规，保证安全
             log.error("异步审核异常: noteId={}, error={}", noteId, e.getMessage(), e);
             return CompletableFuture.completedFuture(
                 ReviewResult.violation("审核系统异常: " + e.getMessage(), Collections.emptyList())
@@ -105,15 +135,27 @@ public class ReviewAsyncTask {
     }
 
     /**
-     * 综合判定结果（只使用LLM判定）
+     * 综合判定结果（仅使用LLM判定）
+     * 
+     * 判定逻辑：
+     *   - VIOLATION（违规）：直接判定为违规
+     *   - SUSPICIOUS（疑似违规）：也判定为违规（保守策略）
+     *   - NORMAL（正常）：判定通过
+     * 
+     * @param review 审核记录
+     * @param valueResult LLM审核结果
+     * @return 最终审核结论
      */
     private ReviewResult combineResult(NoteReview review, ValueReviewService.ValueReviewResult valueResult) {
+        // 记录LLM判定到审核记录中
         review.setLayer3LlmVerdict(valueResult.getStatus());
 
         String llmStatus = valueResult.getStatus();
         
+        // 违规或疑似违规均判定为违规（保守策略，宁可误杀不可放过）
         if (llmStatus != null && ("VIOLATION".equals(llmStatus) || "SUSPICIOUS".equals(llmStatus))) {
             if ("SUSPICIOUS".equals(llmStatus)) {
+                // 疑似违规通常会升级为违规
                 log.warn("内容疑似违规，判定为违规: {}", valueResult.getReason());
             }
             return ReviewResult.violation(valueResult.getReason(), valueResult.getTags());
@@ -123,7 +165,19 @@ public class ReviewAsyncTask {
     }
 
     /**
-     * 处理审核结果
+     * 处理审核结果，更新笔记状态并触发后续动作
+     * 
+     * 审核通过：
+     *   1. 笔记状态更新为正常(status=1)
+     *   2. 有视频时投递视频转码任务到MQ
+     *   3. 触发Feed分发（推送到粉丝收件箱/发件箱）
+     * 
+     * 审核违规：
+     *   1. 笔记状态更新为下架(status=2)
+     *   2. 发送审核拒绝通知给作者
+     * 
+     * @param noteId 笔记ID
+     * @param result 审核结果
      */
     private void handleReviewResult(Long noteId, ReviewResult result) {
         Note note = noteMapper.selectById(noteId);
@@ -136,10 +190,12 @@ public class ReviewAsyncTask {
             noteId, result.getStatus(), result.isPassed(), result.getReason());
 
         if ("VIOLATION".equals(result.getStatus())) {
+            // 违规处理：标记为下架
             note.setStatus(2);
             noteMapper.updateById(note);
             log.info("笔记标记为违规: noteId={}, status={}, reason={}", noteId, result.getStatus(), result.getReason());
 
+            // 发送审核未通过通知（MQ异步投递）
             if (result.getReason() != null && rabbitTemplate != null) {
                 NotificationMessage msg = NotificationMessage.builder()
                         .type(NotificationMessage.TYPE_REVIEW_REJECTED)
@@ -154,11 +210,12 @@ public class ReviewAsyncTask {
             }
 
         } else {
+            // 审核通过处理
             note.setStatus(1);
             noteMapper.updateById(note);
             log.info("笔记审核通过: noteId={}, 触发Feed推送", noteId);
 
-            // 审核通过后触发视频转码
+            // 有视频则投递视频转码任务到MQ
             if (note.getVideo() != null && !note.getVideo().isEmpty() && rabbitTemplate != null) {
                 VideoTranscodeMessage transcodeMsg = VideoTranscodeMessage.builder()
                         .noteId(noteId)
@@ -173,12 +230,20 @@ public class ReviewAsyncTask {
                 log.info("视频转码任务已投递MQ: noteId={}", noteId);
             }
 
+            // 触发Feed分发（推送到粉丝收件箱）
             feedPusher.pushNote(noteId, note.getUserId());
         }
     }
 
     /**
      * 创建审核记录
+     * 初始状态为"待审核"
+     * 
+     * @param noteId 笔记ID
+     * @param userId 用户ID
+     * @param title 标题
+     * @param content 内容
+     * @return 审核记录实体
      */
     private NoteReview createReviewRecord(Long noteId, Long userId, String title, String content) {
         NoteReview review = new NoteReview();
@@ -194,15 +259,20 @@ public class ReviewAsyncTask {
     }
 
     /**
-     * 审核结果
+     * 审核结果（内部静态类）
+     * 
+     * status取值：
+     *   - NORMAL：审核通过
+     *   - VIOLATION：违规
+     *   - SUSPICIOUS：疑似违规（审核不通过）
      */
     @Data
     public static class ReviewResult {
-        private boolean passed;
-        private String status;
-        private String reason;
-        private List<String> matchedWords;
-        private List<String> tags;
+        private boolean passed;          // 是否通过审核
+        private String status;           // 审核状态码
+        private String reason;           // 违规原因描述
+        private List<String> matchedWords; // 命中的敏感词（预留，未使用）
+        private List<String> tags;        // 违规标签列表
 
         public static ReviewResult pass() {
             ReviewResult result = new ReviewResult();
@@ -220,6 +290,9 @@ public class ReviewAsyncTask {
             return result;
         }
 
+        /**
+         * 创建疑似违规结果（当前业务上按违规处理）
+         */
         public static ReviewResult suspicious(String reason, List<String> tags) {
             ReviewResult result = new ReviewResult();
             result.setPassed(false);

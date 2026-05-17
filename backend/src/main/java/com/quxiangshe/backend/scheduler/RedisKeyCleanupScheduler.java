@@ -17,8 +17,19 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 /**
- * Redis 旧 Key 清理任务
- * 清理旧格式的 Key 和数据，确保使用新的存储格式
+ * Redis旧Key清理定时任务
+ * <p>负责清理旧格式的Redis缓存Key，确保系统使用的Key格式统一升级。
+ * 同时提供粉丝数缓存的手动清理与重建能力，用于修复因序列化格式变更导致的数据问题。
+ *
+ * <p>清理模式包括：
+ * <ul>
+ *   <li>feed:follower:count:* — Java序列化格式的旧粉丝数缓存</li>
+ *   <li>feed:following:*    — 旧的关注列表缓存</li>
+ *   <li>feed:user:*         — 旧的用户Feed缓存</li>
+ *   <li>note:hot:v2         — 旧版热度榜单（临时Key残留）</li>
+ * </ul>
+ *
+ * @author 趣享社技术团队
  */
 @Slf4j
 @Component
@@ -30,9 +41,11 @@ public class RedisKeyCleanupScheduler {
     private final FollowMapper followMapper;
     private final UserMapper userMapper;
 
+    /** 新格式的粉丝数缓存Key前缀 */
     private static final String FOLLOWER_COUNT_KEY = "feed:follower:count:";
     private static final int SCAN_BATCH_SIZE = 100;
     
+    /** 通过Setter注入监控告警调度器，用于记录清理任务的执行时间 */
     @org.springframework.beans.factory.annotation.Autowired
     public void setMonitoringAlertScheduler(MonitoringAlertScheduler monitoringAlertScheduler) {
         this.monitoringAlertScheduler = monitoringAlertScheduler;
@@ -50,7 +63,8 @@ public class RedisKeyCleanupScheduler {
     private MonitoringAlertScheduler monitoringAlertScheduler;
 
     /**
-     * 每天凌晨 3 点执行旧 Key 清理
+     * 每天凌晨3点执行旧Key清理
+     * <p>遍历所有预设的旧Key模式，使用SCAN命令安全删除
      */
     @Scheduled(cron = "0 0 3 * * ?")
     public void cleanupOldKeys() {
@@ -58,6 +72,7 @@ public class RedisKeyCleanupScheduler {
         long startTime = System.currentTimeMillis();
         int totalCleaned = 0;
 
+        // 按模式逐一清理，分别记录删除数量
         for (String pattern : OLD_KEY_PATTERNS) {
             int cleaned = cleanupKeysByPattern(pattern);
             totalCleaned += cleaned;
@@ -74,7 +89,11 @@ public class RedisKeyCleanupScheduler {
     }
 
     /**
-     * 根据模式清理 Key
+     * 根据模式清理Key
+     * <p>使用SCAN命令遍历匹配的Key，收集后批量删除，避免阻塞Redis
+     *
+     * @param pattern Key匹配模式
+     * @return 删除的Key数量
      */
     private int cleanupKeysByPattern(String pattern) {
         int count = 0;
@@ -86,12 +105,14 @@ public class RedisKeyCleanupScheduler {
                     .count(100)
                     .build();
             
+            // 使用SCAN游标迭代，避免在大量Key场景下阻塞Redis
             try (Cursor<String> cursor = redisTemplate.scan(options)) {
                 while (cursor.hasNext()) {
                     keys.add(cursor.next());
                 }
             }
 
+            // 收集完毕后一次性批量删除
             if (!keys.isEmpty()) {
                 redisTemplate.delete(keys);
                 count = keys.size();
@@ -104,8 +125,13 @@ public class RedisKeyCleanupScheduler {
     }
 
     /**
-     * 手动触发清理 - 清理粉丝数缓存中的 Java 序列化数据
-     * API: POST /admin/cleanup/follower-cache
+     * 手动触发清理 — 清理粉丝数缓存中的Java序列化旧格式数据
+     * <p>Java序列化数据以特定的二进制魔数（\xac\xed）开头，value中会包含"java.lang.Long"等类型信息。
+     * 此方法扫描所有粉丝数缓存Key，将值为Java序列化格式的Key标记为待删除
+     *
+     * <p>API: POST /admin/cleanup/follower-cache
+     *
+     * @return 清理的Key数量
      */
     public int cleanupFollowerCache() {
         log.info("开始清理粉丝数缓存中的旧格式数据...");
@@ -121,7 +147,7 @@ public class RedisKeyCleanupScheduler {
         try (Cursor<String> cursor = redisTemplate.scan(options)) {
             while (cursor.hasNext()) {
                 String key = cursor.next();
-                // 检查是否为 Java 序列化格式（以 \xac\xed 开头）
+                // 检测是否为Java序列化格式：以NULL字符(\u0000)开头或包含序列化类名
                 String value = redisTemplate.opsForValue().get(key);
                 if (value != null && (value.startsWith("\u0000") || value.contains("java.lang.Long"))) {
                     oldKeys.add(key);
@@ -140,8 +166,13 @@ public class RedisKeyCleanupScheduler {
     }
 
     /**
-     * 重建粉丝数缓存 - 从数据库同步
-     * API: POST /admin/rebuild/follower-cache
+     * 重建粉丝数缓存 — 从数据库全量同步粉丝数到Redis
+     * <p>批量遍历所有用户，查询每个用户的粉丝数，以String格式写入Redis。
+     * 适用于粉丝数缓存大面积损坏或格式迁移后的数据重建场景
+     *
+     * <p>API: POST /admin/rebuild/follower-cache
+     *
+     * @return 重建的用户数量
      */
     public int rebuildFollowerCache() {
         log.info("开始重建粉丝数缓存...");
@@ -153,7 +184,7 @@ public class RedisKeyCleanupScheduler {
             List<User> users = userMapper.selectList(null);
             log.info("共有 {} 个用户需要重建粉丝数缓存", users.size());
             
-            // 2. 批量处理每个用户的粉丝数
+            // 2. 批量处理每个用户的粉丝数，每批BATCH_SIZE个用户
             List<Long> userIds = users.stream().map(User::getId).toList();
             
             for (int i = 0; i < userIds.size(); i += BATCH_SIZE) {
@@ -168,7 +199,7 @@ public class RedisKeyCleanupScheduler {
                                 .eq(com.quxiangshe.backend.entity.Follow::getFollowingId, userId)
                         );
                         
-                        // 写入 Redis（使用 String 格式）
+                        // 写入 Redis（使用 String 格式，兼容新架构）
                         redisTemplate.opsForValue().set(
                             FOLLOWER_COUNT_KEY + userId,
                             String.valueOf(followerCount != null ? followerCount : 0)

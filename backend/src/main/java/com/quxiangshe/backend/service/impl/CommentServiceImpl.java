@@ -36,13 +36,25 @@ import java.util.List;
 import static com.quxiangshe.backend.service.impl.ActivityServiceImpl.ACTION_COMMENT;
 
 /**
- * 评论服务实现类 - 抖音风格
- * 
- * 评论结构规范：
- * - parentId = 0: 根评论（一级评论）
- * - parentId > 0: 子评论（回复）
- * - rootId: 所属根评论ID（用于前端渲染）
- * 
+ * 评论服务实现类
+ *
+ * <p>核心职责：
+ * <ul>
+ *   <li>管理笔记的评论发布、查询与删除</li>
+ *   <li>通过 Redis + 分布式锁 + Lua 脚本原子维护评论计数，异步回写数据库</li>
+ *   <li>支持根评论 / 子回复层级结构的级联删除</li>
+ *   <li>评论发布后触发活跃度记录、热度值更新及异步通知</li>
+ * </ul>
+ *
+ * <p>评论结构规范：
+ * <ul>
+ *   <li>parentId = 0：根评论（一级评论）</li>
+ *   <li>parentId > 0：子评论（回复）</li>
+ *   <li>rootId：所属根评论ID（用于前端渲染）</li>
+ * </ul>
+ *
+ * <p>所属业务模块：社交互动管理
+ *
  * @author 趣享社技术团队
  */
 @Slf4j
@@ -76,6 +88,13 @@ public class CommentServiceImpl implements ICommentService {
             "end " +
             "return current";
     
+    /**
+     * 获取指定笔记的评论列表（内部查询接口）
+     *
+     * @param noteId 笔记ID
+     * @param rootId 根评论ID（预留参数，当前未使用）
+     * @return 评论列表
+     */
     @Override
     public List<NoteComment> getComments(Long noteId, Long rootId) {
         return commentMapper.selectByNoteId(noteId);
@@ -83,6 +102,11 @@ public class CommentServiceImpl implements ICommentService {
     
     /**
      * 使用 Redis + 分布式锁 + Lua 脚本原子递增评论数
+     *
+     * <p>获取评论数的分布式锁后在 Redis 内执行 Lua INCR 脚本，
+     * 确保并发场景下评论数的原子性递增，并异步回写 DB。
+     *
+     * @param noteId 笔记ID
      */
     private void incrementCommentCountWithRedis(Long noteId) {
         RLock lock = redissonClient != null ? redissonClient.getLock("comment:note:" + noteId) : null;
@@ -114,7 +138,9 @@ public class CommentServiceImpl implements ICommentService {
     }
     
     /**
-     * 异步保存评论数到数据库
+     * 异步将 Redis 中的评论数回写到数据库
+     *
+     * @param noteId 笔记ID
      */
     private void asyncSaveCommentCountToDb(Long noteId) {
         try {
@@ -132,8 +158,14 @@ public class CommentServiceImpl implements ICommentService {
     
     /**
      * 使用 Redis + 分布式锁 + Lua 脚本原子递减评论数
+     *
+     * <p>循环执行 decrement 次 Lua DECR 脚本，确保评论数不会减到负数（下限为0）。
+     *
+     * @param noteId    笔记ID
+     * @param decrement 递减数量
      */
     private void decrementCommentCountWithRedis(Long noteId, int decrement) {
+        // 获取分布式锁，防止并发删除评论计数异常
         RLock lock = redissonClient != null ? redissonClient.getLock("comment:note:" + noteId) : null;
         boolean lockAcquired = false;
         if (lock != null) {
@@ -177,27 +209,38 @@ public class CommentServiceImpl implements ICommentService {
     }
     
     /**
-     * 发布评论/回复
-     * 
-     * @param userId 当前用户ID
-     * @param request 评论请求
-     * @return 创建的评论
+     * 发布评论或回复
+     *
+     * <p>处理流程：
+     * <ol>
+     *   <li>校验笔记是否存在且状态正常</li>
+     *   <li>确定 parentId 和 rootId（子回复需要向上追溯根评论）</li>
+     *   <li>插入评论记录</li>
+     *   <li>原子递增 Redis 评论数并重置记热度</li>
+     *   <li>记录用户活跃度</li>
+     *   <li>通过 RabbitMQ 异步发送评论通知</li>
+     * </ol>
+     *
+     * @param userId  当前用户ID
+     * @param request 评论请求（含笔记ID、父评论ID、内容）
+     * @return 创建的评论实体（含用户信息）
+     * @throws BusinessException 当笔记不存在或父评论不存在时
      */
     @Override
     @Transactional
     public NoteComment addComment(Long userId, CreateCommentRequest request) {
-        // 1. 检查笔记是否存在
+        // 校验笔记是否存在且状态正常（status=1 表示已发布）
         Note note = noteMapper.selectById(request.getNoteId());
         if (note == null || note.getStatus() != 1) {
             throw new BusinessException(404, "笔记不存在");
         }
         
-        // 3. 确定parentId和rootId
+        // 确定 parentId 和 rootId
         Long parentId = 0L;
         Long rootId = 0L;
-        
+
         if (request.getParentId() != null && request.getParentId() > 0) {
-            // 是回复评论，需要查询父评论确定rootId
+            // 是回复评论：rootId = 父评论的 rootId（如果父评论是根评论则取父评论ID）
             NoteComment parentComment = commentMapper.selectById(request.getParentId());
             if (parentComment == null) {
                 throw new BusinessException(404, "父评论不存在");
@@ -246,7 +289,7 @@ public class CommentServiceImpl implements ICommentService {
             }
         }
         
-        // 10. 发送评论通知 (异步MQ)
+        // 发送评论通知：通过RabbitMQ异步投递，避免阻塞评论主流程
         if (rabbitTemplate != null && note != null && !note.getUserId().equals(userId)) {
             NotificationMessage msg = NotificationMessage.builder()
                     .type(NotificationMessage.TYPE_COMMENT)
@@ -301,12 +344,16 @@ public List<NoteComment> getCommentList(Long noteId, int page, int size) {
     
     /**
      * 删除评论（级联删除）
-     * - 删除根评论时会删除所有子评论
-     * - 删除子评论只删除该评论
      *
-     * @param commentId 评论ID
-     * @param userId 当前用户ID
-     * @return 是否删除成功
+     * <p>删除根评论时递归删除所有子评论（逻辑删除，status=2）。
+     * 删除子评论时递归删除该评论及其所有后代。
+     * 权限校验：评论作者本人或笔记作者可以删除。
+     *
+     * @param commentId   评论ID
+     * @param userId      当前用户ID
+     * @param isNoteOwner 当前用户是否是该笔记的作者
+     * @return true 表示删除成功
+     * @throws BusinessException 当评论不存在或无权限时
      */
     @Override
     @Transactional
@@ -321,21 +368,22 @@ public List<NoteComment> getCommentList(Long noteId, int page, int size) {
         
         log.info("Comment found: userId={}, commentUserId={}", userId, comment.getUserId());
         
-        // 2. 验证权限（自己的评论 或 笔记发布者）
+        // 权限验证：评论作者本人或笔记作者可以删除
         if (!comment.getUserId().equals(userId) && !isNoteOwner) {
             throw new BusinessException(403, "只能删除自己的评论");
         }
         
         // 3. 执行删除
+        // 根据 parentId 判断是根评论还是子回复，执行不同的删除策略
         if (comment.getParentId() == null || comment.getParentId() == 0) {
-            // 是根评论，级联删除所有子评论
+            // 根评论：级联删除所有子评论后逻辑删除自身
             deleteCommentRecursive(commentId, comment.getNoteId());
             // 删除根评论
             comment.setStatus(2);
             comment.setDeletedAt(java.time.LocalDateTime.now());
             commentMapper.updateById(comment);
         } else {
-            // 是子评论，递归删除该评论及其所有后代评论
+            // 子评论：递归删除该评论及其所有后代评论
             deleteCommentRecursive(commentId, comment.getNoteId());
         }
         
@@ -350,6 +398,12 @@ public List<NoteComment> getCommentList(Long noteId, int page, int size) {
         return true;
     }
 
+    /**
+     * 根据评论ID获取评论
+     *
+     * @param commentId 评论ID
+     * @return 评论实体，不存在时返回 null
+     */
     @Override
     public NoteComment getCommentById(Long commentId) {
         return commentMapper.selectById(commentId);
@@ -358,7 +412,9 @@ public List<NoteComment> getCommentList(Long noteId, int page, int size) {
     // ==================== 私有方法 ====================
     
     /**
-     * 填充用户信息
+     * 填充评论的用户信息（昵称、头像）
+     *
+     * @param comment 评论实体
      */
     private void fillUserInfo(NoteComment comment) {
         if (comment.getUserId() != null) {

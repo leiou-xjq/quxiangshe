@@ -10,7 +10,12 @@ import org.apache.ibatis.annotations.Update;
 import java.util.List;
 
 /**
- * 笔记评论Mapper接口 - 抖音风格
+ * 笔记评论数据访问层接口，管理笔记评论（NoteComment）的数据库操作。
+ * <p>
+ * 采用抖音风格的评论结构：支持根评论与子评论（回复）的树状层级关系。
+ * 提供评论按笔记/根评论查询、批量查询、批量导入、
+ * 点赞数的原子递增/递减（解决并发竞态）及权威点赞数查询等功能。
+ * </p>
  *
  * @author 趣享社技术团队
  */

@@ -6,9 +6,16 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 推送日志实体类
- * 对应数据库表: feed_push_log
- * 记录所有推送投递状态，实时查看用户接收推送情况
+ * Feed推送日志实体类，对应数据库表 feed_push_log。
+ * <p>
+ * 记录每次Feed推送的投递状态，用于追踪笔记从作者到目标用户的推送情况。
+ * 支持三种推送模式：
+ * <ul>
+ *   <li>推模式（PUSH_MODE_PUSH=1）：笔记推送至粉丝收件箱</li>
+ *   <li>拉模式（PUSH_MODE_PULL=2）：粉丝从发件箱拉取</li>
+ *   <li>推拉结合（PUSH_MODE_HYBRID=3）：活跃粉丝推、非活跃粉丝拉</li>
+ * </ul>
+ * </p>
  * 
  * @author 趣享社技术团队
  */

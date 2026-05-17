@@ -9,7 +9,11 @@ import org.apache.ibatis.annotations.Select;
 import java.util.List;
 
 /**
- * 转发记录Mapper接口
+ * 转发记录数据访问层接口，管理笔记转发记录（Forward）的数据库操作。
+ * <p>
+ * 提供按原始笔记查询转发列表、按用户查询转发历史等功能，
+ * 支持转发记录的追溯与展示。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

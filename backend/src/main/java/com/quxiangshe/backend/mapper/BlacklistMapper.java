@@ -7,7 +7,11 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 /**
- * 黑名单Mapper接口
+ * 黑名单数据访问层接口，管理用户拉黑关系（Blacklist）的数据库操作。
+ * <p>
+ * 提供拉黑状态检查功能，用于过滤Feed流中的拉黑用户内容、
+ * 阻止拉黑用户的私信和互动。
+ * </p>
  * 
  * @author 趣享社技术团队
  */

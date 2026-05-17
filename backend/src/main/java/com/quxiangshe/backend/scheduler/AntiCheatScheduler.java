@@ -41,7 +41,14 @@ public class AntiCheatScheduler {
     
     /**
      * 每5分钟执行异常检测
-     * 检测单笔记热度单日增幅>500的异常情况
+     * <p>采用相对增长率算法，避免硬编码绝对值带来的误判：
+     * <pre>growthRate = (currentScore - previousScore) / previousScore</pre>
+     * <p>检测条件（同时满足）：
+     * <ol>
+     *   <li>当前热度分数 &gt; MIN_SCORE_TO_CHECK（1000），过滤低热度噪声</li>
+     *   <li>相对增长率 &gt; ANOMALY_GROWTH_RATE（100%），判断增幅异常</li>
+     * </ol>
+     * <p>疑似刷分笔记将被加入审核队列（AUDIT_PENDING_KEY），等待人工审核
      */
     @Scheduled(fixedRate = 5 * 60 * 1000)
     public void checkAnomaly() {
@@ -55,7 +62,7 @@ public class AntiCheatScheduler {
                 return;
             }
             
-            // 批量查询笔记信息
+            // 批量查询笔记信息，减少数据库查询次数
             List<Long> ids = noteIds.stream()
                 .map(Long::parseLong)
                 .collect(java.util.stream.Collectors.toList());
@@ -66,12 +73,12 @@ public class AntiCheatScheduler {
             for (Note note : notes) {
                 double currentScore = calculateHotScore(note);
                 
-                // 跳过低热度笔记
+                // 跳过低热度笔记，避免小数值导致的增长率误判（例如从1涨到5增长400%）
                 if (currentScore < MIN_SCORE_TO_CHECK) {
                     continue;
                 }
                 
-                // 获取上次热度分数
+                // 获取上次热度分数，用于计算增长率
                 String prevScoreStr = redisTemplate.opsForValue().get(NOTE_PREVIOUS_SCORE_KEY + note.getId());
                 double previousScore = prevScoreStr != null ? Double.parseDouble(prevScoreStr) : 0;
                 
@@ -81,10 +88,10 @@ public class AntiCheatScheduler {
                     growthRate = (currentScore - previousScore) / previousScore;
                 }
                 
-                // 记录当前分数用于下次比较
+                // 记录当前分数用于下次比较（覆盖旧值）
                 redisTemplate.opsForValue().set(NOTE_PREVIOUS_SCORE_KEY + note.getId(), String.valueOf(currentScore));
                 
-                // 增长超过100%且绝对分数足够高才触发
+                // 增长超过100%且绝对分数足够高才触发告警
                 if (growthRate > ANOMALY_GROWTH_RATE && currentScore > MIN_SCORE_TO_CHECK) {
                     redisTemplate.opsForSet().add(AUDIT_PENDING_KEY, note.getId().toString());
                     log.warn("检测到异常笔记: noteId={}, currentScore={}, previousScore={}, growthRate={}%", 
@@ -103,7 +110,8 @@ public class AntiCheatScheduler {
     
     /**
      * 每日凌晨1点执行黑名单清理
-     * 24小时后自动解除
+     * <p>当前通过Redis Key过期机制（24h TTL）实现自动解除；
+     * 后续可增强为：记录精确封禁时间，按需提前/延后解禁
      */
     @Scheduled(cron = "0 0 1 * * ?")
     public void cleanBlockList() {
@@ -111,7 +119,7 @@ public class AntiCheatScheduler {
         
         try {
             // 检查是否有需要解除的笔记（简单实现：按时间清理）
-            // 实际生产中需要记录封禁时间
+            // 实际生产中需要记录封禁时间，此处当前主要依赖Redis Key的TTL自动过期
             log.info("黑名单清理完成");
             
         } catch (RedisConnectionFailureException e) {
@@ -123,13 +131,21 @@ public class AntiCheatScheduler {
     
     /**
      * 将笔记加入黑名单
+     * <p>三步操作确保一致性：
+     * <ol>
+     *   <li>从热度榜单移除（HOT_RANK_KEY）</li>
+     *   <li>加入黑名单集合（HOT_BLOCK_KEY），设置24h过期</li>
+     *   <li>从审核队列移除（AUDIT_PENDING_KEY），避免重复审核</li>
+     * </ol>
+     *
+     * @param noteId 笔记ID
      */
     public void blockNote(Long noteId) {
         try {
             // 从榜单移除
             redisTemplate.opsForZSet().remove(HOT_RANK_KEY, noteId.toString());
             
-            // 加入黑名单
+            // 加入黑名单，24小时后自动解除
             redisTemplate.opsForSet().add(HOT_BLOCK_KEY, noteId.toString());
             redisTemplate.expire(HOT_BLOCK_KEY, BLOCK_EXPIRE_HOURS, TimeUnit.HOURS);
             
@@ -204,7 +220,11 @@ public class AntiCheatScheduler {
     }
     
     /**
-     * 计算热度
+     * 计算笔记热度分数
+     * <p>加权公式：hotScore = 点赞×1 + 评论×2 + 收藏×3 + 转发×5
+     *
+     * @param note 笔记实体
+     * @return 热度分数
      */
     private double calculateHotScore(Note note) {
         int likeCount = note.getLikeCount() != null ? note.getLikeCount() : 0;

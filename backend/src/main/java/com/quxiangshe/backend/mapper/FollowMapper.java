@@ -9,7 +9,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 关注关系Mapper接口
+ * 关注关系数据访问层接口，管理用户之间的关注/粉丝关系。
+ * <p>
+ * 提供关注状态检查、粉丝列表与关注列表的游标分页查询、
+ * 批量关注状态查询、关注记录ID获取以及批量导入等功能。
+ * 同时支持大博主识别所需的粉丝数阈值查询。
+ * </p>
  * 
  * @author 趣享社技术团队
  */
