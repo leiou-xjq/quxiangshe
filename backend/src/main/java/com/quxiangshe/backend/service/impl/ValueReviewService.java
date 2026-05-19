@@ -1,8 +1,11 @@
 package com.quxiangshe.backend.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.quxiangshe.backend.entity.ViolationCaseLibrary;
+import com.quxiangshe.backend.service.IViolationCaseLibraryService;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -73,6 +76,15 @@ public class ValueReviewService {
 
     @Value("${review.value-review-enabled:true}")
     private boolean valueReviewEnabled;
+
+    @Autowired
+    private IViolationCaseLibraryService caseLibraryService;
+
+    @Value("${rag.enabled:true}")
+    private boolean ragEnabled;
+
+    @Value("${rag.top-k:5}")
+    private int ragTopK;
 
     public ValueReviewService(ObjectMapper objectMapper) {
         this.restTemplate = new RestTemplate();
@@ -297,6 +309,33 @@ public class ValueReviewService {
 请给出审核结果：""";
 
     /**
+     * 构建带RAG相似案例的审核Prompt
+     *
+     * 将RAG检索到的相似案例注入到Prompt中，
+     * 帮助LLM更准确地判断内容是否违规
+     *
+     * @param title 笔记标题
+     * @param content 笔记内容
+     * @param ragCasesPrompt RAG相似案例文本
+     * @return 完整Prompt
+     */
+    private String buildPromptWithRag(String title, String content, String ragCasesPrompt) {
+        if (ragCasesPrompt == null || ragCasesPrompt.isEmpty()) {
+            // 无RAG案例时使用原始Prompt
+            return String.format(VALUE_REVIEW_PROMPT,
+                title != null ? title : "",
+                content != null ? content : "");
+        }
+
+        // 在原始Prompt基础上追加RAG案例
+        String basePrompt = String.format(VALUE_REVIEW_PROMPT,
+            title != null ? title : "",
+            content != null ? content : "");
+
+        return basePrompt + ragCasesPrompt;
+    }
+
+    /**
      * 价值观审核（调用LLM，不含图片）
      * 
      * @param title 笔记标题
@@ -333,10 +372,24 @@ public class ValueReviewService {
 
         log.info("开始价值观审核: title={}, images={}", title, imageUrls != null ? imageUrls.size() : 0);
 
-        // 使用String.format将标题和内容注入Prompt模板
-        String prompt = String.format(VALUE_REVIEW_PROMPT,
-            title != null ? title : "",
-            content != null ? content : "");
+        // ===== RAG Layer 2: 检索相似违规案例 =====
+        String ragCasesPrompt = "";
+        if (ragEnabled) {
+            try {
+                String combinedText = ((title != null) ? title : "") + " " + ((content != null) ? content : "");
+                List<ViolationCaseLibrary> similarCasesList = caseLibraryService.searchSimilar(combinedText, ragTopK);
+                if (similarCasesList != null && !similarCasesList.isEmpty()) {
+                    ragCasesPrompt = caseLibraryService.formatCasesForPrompt(similarCasesList);
+                    log.info("RAG检索相似案例: count={}", similarCasesList.size());
+                }
+            } catch (Exception e) {
+                log.warn("RAG检索失败，将跳过案例参考: {}", e.getMessage());
+            }
+        }
+        // ===== RAG检索结束 =====
+
+        // 构建审核Prompt（包含RAG相似案例）
+        String prompt = buildPromptWithRag(title, content, ragCasesPrompt);
 
         // 重试机制：最多3次，指数退避（1s, 2s, 4s）
         int maxRetries = 3;

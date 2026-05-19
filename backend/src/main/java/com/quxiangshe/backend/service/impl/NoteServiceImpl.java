@@ -10,15 +10,9 @@ import com.quxiangshe.backend.exception.BusinessException;
 import com.quxiangshe.backend.component.FeedPusher;
 import com.quxiangshe.backend.component.SnowflakeIdGenerator;
 import com.quxiangshe.backend.mapper.*;
-import com.quxiangshe.backend.service.IActivityService;
-import com.quxiangshe.backend.service.IFeedService;
-import com.quxiangshe.backend.service.INotificationService;
-import com.quxiangshe.backend.service.IOssService;
-import org.springframework.context.annotation.Lazy;
-import com.quxiangshe.backend.service.INoteService;
+import com.quxiangshe.backend.service.*;
 import static com.quxiangshe.backend.service.impl.ActivityServiceImpl.ACTION_LIKE;
 import static com.quxiangshe.backend.service.impl.ActivityServiceImpl.ACTION_FAVORITE;
-import com.quxiangshe.backend.service.ISearchService;
 import com.quxiangshe.backend.service.sort.FullSortStrategy;
 import com.quxiangshe.backend.task.ReviewAsyncTask;
 import com.quxiangshe.backend.vo.NoteVO;
@@ -29,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -45,7 +40,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -97,10 +91,15 @@ public class NoteServiceImpl implements INoteService {
     private ReviewAsyncTask reviewAsyncTask;
     @Autowired
     private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private IReputationService reputationService;
 
     @Value("${review.async-enabled:true}")
     private boolean asyncReviewEnabled;
-    
+
+    @Value("${review.sync-review-threshold:80}")
+    private int syncReviewThreshold;
+
     private final StringRedisTemplate redisTemplate;
     private final FullSortStrategy fullSortStrategy;
     private final SnowflakeIdGenerator snowflakeIdGenerator;
@@ -183,16 +182,16 @@ public class NoteServiceImpl implements INoteService {
     private static final String DISCOVER_RANDOM_KEY = "discover:random:";
     
     /**
-     * 发布笔记（支持同步审核和异步审核两种模式）
-     * 
+     * 发布笔记（支持基于用户信誉分的动态审核模式）
+     *
      * 完整流程：
-     *   1. 构建笔记实体，初始化计数为0
-     *   2. 根据配置决定审核模式：异步模式状态=0(待审核)，同步模式状态=1(发布)
-     *   3. 序列化图片/标签字段，保存到数据库
-     *   4. 异步模式：事务提交后通过MQ投递审核任务（避免事务回滚时审核已被触发）
-     *   5. 同步模式：事务提交后直接触发Feed分发和粉丝标记更新
-     *   6. 同步笔记到ES搜索引擎
-     * 
+     *   1. 查询用户信誉分
+     *   2. 根据信誉分决定审核模式：>=阈值走同步，<阈值走异步
+     *   3. 构建笔记实体，初始化计数为0
+     *   4. 异步模式：状态=0(待审核)，事务提交后投MQ
+     *   5. 同步模式：先审核，通过则状态=1，失败则抛异常拒绝
+     *   6. 事务提交后触发Feed分发
+     *
      * @param userId 发布者ID
      * @param request 笔记创建请求（含标题、内容、图片、标签、视频等）
      * @return 笔记VO（含审核状态）
@@ -201,37 +200,51 @@ public class NoteServiceImpl implements INoteService {
     @Override
     @Transactional
     public NoteVO createNote(Long userId, CreateNoteRequest request) {
+        // 查询用户信誉分，决定审核模式
+        Integer userReputation = null;
+        boolean useSyncReview = false;
+
+        if (reputationService != null) {
+            userReputation = reputationService.getReputationScore(userId);
+            useSyncReview = userReputation >= syncReviewThreshold;
+            log.info("用户信誉分检查: userId={}, reputation={}, threshold={}, mode={}",
+                userId, userReputation, syncReviewThreshold, useSyncReview ? "SYNC" : "ASYNC");
+        }
+
         // 构建笔记实体
         Note note = new Note();
         note.setUserId(userId);
         note.setTitle(request.getTitle());
         note.setContent(request.getContent());
         note.setLocation(request.getLocation());
-        
-        // 根据审核模式设置初始状态
-        log.info("创建笔记检查: asyncReviewEnabled={}, reviewAsyncTask={}, review.enabled={}", 
-            asyncReviewEnabled, reviewAsyncTask, reviewAsyncTask != null ? "loaded" : "null");
-        if (asyncReviewEnabled && reviewAsyncTask != null) {
-            // 异步审核模式：先入库，状态为待审核，由MQ消费者异步审核
-            note.setStatus(0);  // 0=待审核
-            log.info("发布笔记（异步审核模式）: noteId={}, status=0", note.getId());
-        } else {
-            // 同步审核模式：入库前先进行AI内容审核
-            if (noteReviewService != null) {
-                NoteReviewService.ReviewResponse reviewResponse = noteReviewService.reviewNote(
-                    null, // noteId暂时为null，审核记录会在之后更新关联
-                    userId,
-                    request
-                );
-                
-                // 审核未通过则直接拒绝发布，抛出业务异常
-                if (!reviewResponse.isPassed()) {
-                    throw new BusinessException(400, reviewResponse.getMessage());
-                }
+
+        // 根据信誉分选择审核模式
+        if (useSyncReview && noteReviewService != null) {
+            // 同步审核模式（信誉分达标）：入库前先审核
+            log.info("发布笔记（同步审核模式）: userId={}, reputation={}", userId, userReputation);
+            NoteReviewService.ReviewResponse reviewResponse = noteReviewService.reviewNote(
+                null,
+                userId,
+                request
+            );
+
+            // 审核未通过则直接拒绝发布
+            if (!reviewResponse.isPassed()) {
+                throw new BusinessException(400, reviewResponse.getMessage());
             }
             note.setStatus(1); // 1=正常状态，审核通过
+
+        } else if (reviewAsyncTask != null) {
+            // 异步审核模式（默认）：先入库，状态为待审核
+            note.setStatus(0);  // 0=待审核
+            log.info("发布笔记（异步审核模式）: userId={}, status=0", userId);
+
+        } else {
+            // 兜底：无可用审核服务，直接通过
+            log.warn("无可用审核服务，直接通过: userId={}", userId);
+            note.setStatus(1);
         }
-        
+
         note.setLikeCount(0);
         note.setCommentCount(0);
         note.setFavoriteCount(0);
@@ -258,19 +271,18 @@ public class NoteServiceImpl implements INoteService {
 
         // 异步审核模式：注册事务同步器，在事务成功提交后投递MQ审核任务
         // NOTE: 必须在afterCommit中投递，否则若事务回滚而MQ消息已发出会导致重复审核
-        if (asyncReviewEnabled && reviewAsyncTask != null) {
+        if (!useSyncReview && reviewAsyncTask != null) {
+            // 异步审核模式：投递MQ审核任务
             final Long noteId = note.getId();
             final Long authorId = userId;
             final String title = request.getTitle();
             final String content = request.getContent();
             final List<String> images = request.getImages();
 
-            // 事务提交后异步投递审核任务到MQ
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    log.info("投递审核任务到MQ: noteId={}, authorId={}, title={}, images={}", noteId, authorId, title,
-                        images != null ? images.size() : 0);
+                    log.info("投递审核任务到MQ: noteId={}, authorId={}", noteId, authorId);
                     ReviewTaskMessage message = ReviewTaskMessage.builder()
                             .noteId(noteId)
                             .userId(authorId)
@@ -286,22 +298,22 @@ public class NoteServiceImpl implements INoteService {
                     );
                 }
             });
-        } else {
-            log.warn("未触发异步审核: asyncReviewEnabled={}, reviewAsyncTask={}", asyncReviewEnabled, reviewAsyncTask);
-            // 同步审核模式：事务提交后直接触发Feed分发 + 设置粉丝关注更新标记
+        } else if (useSyncReview) {
+            // 同步审核模式：事务提交后直接触发Feed分发
             final Long noteId = note.getId();
             final Long authorId = userId;
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    // 推送笔记到Feed流
+                    log.info("同步审核通过，直接触发Feed分发: noteId={}", noteId);
                     feedPusher.pushNote(noteId, authorId);
                     if (feedService != null) {
-                        // 标记粉丝的关注Tab有更新（红点提示）
                         feedService.setFollowUpdateForFans(authorId, noteId);
                     }
                 }
             });
+        } else {
+            log.warn("未触发任何审核: useSyncReview={}, reviewAsyncTask={}", useSyncReview, reviewAsyncTask);
         }
         
         // 同步笔记到Elasticsearch搜索引擎

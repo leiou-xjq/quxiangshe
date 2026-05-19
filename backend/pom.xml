@@ -195,6 +195,13 @@
 
         <!-- LangChain4j存在OkHttp版本冲突，改用RestTemplate直接调用豆包API -->
 
+        <!-- Milvus向量数据库SDK (RAG违规案例检索) -->
+        <dependency>
+            <groupId>io.milvus</groupId>
+            <artifactId>milvus-sdk-java</artifactId>
+            <version>2.3.4</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

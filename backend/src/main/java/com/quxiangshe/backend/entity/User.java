@@ -87,7 +87,15 @@ public class User {
      * 状态：0-禁用，1-正常，2-待审核
      */
     private Integer status;
-    
+
+    /**
+     * 信誉分：0-100，用于决定审核模式
+     * >= syncReviewThreshold: 同步审核（快速通道）
+     * < syncReviewThreshold: 异步审核（普通）
+     */
+    @TableField("reputation_score")
+    private Integer reputationScore;
+
     /**
      * 角色：USER-普通用户, MODERATOR-审核员, ADMIN-管理员
      */

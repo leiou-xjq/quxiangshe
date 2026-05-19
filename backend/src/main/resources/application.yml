@@ -163,12 +163,52 @@ review:
   mode: async
   async-enabled: ${REVIEW_ASYNC_ENABLED:true}
   value-review-enabled: ${VALUE_REVIEW_ENABLED:true}
+  # 信誉分阈值：>=此值走同步审核（快速通道），<此值走异步审核
+  sync-review-threshold: ${REVIEW_SYNC_THRESHOLD:80}
   doubao:
     api-key: ${DOUBAO_API_KEY:}
     endpoint: ${DOUBAO_ENDPOINT:ep-20260428080756-pbltx}
     base-url: ${DOUBAO_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
     model: ${DOUBAO_MODEL:doubao-1-5-lite-32k-250115}
     timeout: 30000
+
+# 用户信誉分配置
+reputation:
+  # 信誉分规则
+  initial-score: 50          # 新用户初始分
+  max-score: 100             # 上限
+  min-score: 0               # 下限
+  # 增加分数配置
+  increase:
+    review-passed: 2         # 审核通过+2分
+    daily-limit: 10          # 单日增加上限
+  # 减少分数配置
+  decrease:
+    review-rejected: 5       # 审核违规-5分
+    report-confirmed: 10     # 举报核实-10分
+    spam-detected: 20        # 恶意刷量-20分
+
+# Embedding服务配置（豆包向量嵌入）
+embedding:
+  doubao:
+    endpoint: ${EMBEDDING_ENDPOINT:}
+    api-key: ${EMBEDDING_API_KEY:}
+    model: ${EMBEDDING_MODEL:doubao-embedding-v1}
+    timeout: 10
+
+# Milvus向量数据库配置（RAG违规案例检索）
+milvus:
+  host: ${MILVUS_HOST:localhost}
+  port: ${MILVUS_PORT:19530}
+  collection-name: ${MILVUS_COLLECTION:violation_cases}
+  dimension: ${MILVUS_DIMENSION:768}
+  timeout: 10
+
+# RAG功能配置
+rag:
+  enabled: ${RAG_ENABLED:true}
+  top-k: ${RAG_TOP_K:5}
+  similarity-threshold: ${RAG_SIMILARITY_THRESHOLD:0.7}
 
 # 微信登录配置
 wechat:

@@ -5,9 +5,12 @@ import com.quxiangshe.backend.dto.NotificationMessage;
 import com.quxiangshe.backend.dto.VideoTranscodeMessage;
 import com.quxiangshe.backend.entity.Note;
 import com.quxiangshe.backend.entity.NoteReview;
+import com.quxiangshe.backend.entity.ViolationCaseLibrary;
 import com.quxiangshe.backend.mapper.NoteMapper;
 import com.quxiangshe.backend.mapper.NoteReviewMapper;
 import com.quxiangshe.backend.service.INotificationService;
+import com.quxiangshe.backend.service.IReputationService;
+import com.quxiangshe.backend.service.IViolationCaseLibraryService;
 import com.quxiangshe.backend.service.impl.ValueReviewService;
 import com.quxiangshe.backend.component.FeedPusher;
 import lombok.Data;
@@ -60,6 +63,13 @@ public class ReviewAsyncTask {
 
     @Autowired
     private INotificationService notificationService;
+
+    @Autowired
+    private IViolationCaseLibraryService caseLibraryService;
+
+    @Autowired
+    private IReputationService reputationService;
+
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
@@ -68,6 +78,12 @@ public class ReviewAsyncTask {
 
     @Value("${review.enabled:true}")
     private boolean reviewEnabled;
+
+    @Value("${reputation.increase.review-passed:2}")
+    private int reputationBonus;
+
+    @Value("${reputation.decrease.review-rejected:5}")
+    private int reputationPenalty;
 
 /**
      * 异步执行内容审核（不含图片）
@@ -209,6 +225,34 @@ public class ReviewAsyncTask {
                 log.info("审核未通过通知已投递MQ: noteId={}, userId={}", noteId, note.getUserId());
             }
 
+            // ===== 自动入库到违规案例库 =====
+            try {
+                ViolationCaseLibrary caseInfo = ViolationCaseLibrary.builder()
+                    .caseType(extractCaseType(result.getTags()))
+                    .title(note.getTitle())
+                    .content(note.getContent())
+                    .violationReason(result.getReason())
+                    .violationTags(result.getTags() != null ? String.join(",", result.getTags()) : null)
+                    .sourceReviewId(null)
+                    .build();
+                Long caseId = caseLibraryService.addCase(caseInfo);
+                if (caseId != null) {
+                    log.info("违规案例已自动入库: caseId={}, caseType={}", caseId, caseInfo.getCaseType());
+                }
+            } catch (Exception e) {
+                log.error("违规案例自动入库失败: noteId={}, error={}", noteId, e.getMessage());
+            }
+            // ===== 自动入库结束 =====
+
+            // ===== 更新用户信誉分（违规扣分） =====
+            try {
+                reputationService.decreaseReputation(note.getUserId(), reputationPenalty, "审核违规");
+                log.info("用户信誉分已扣除: userId={}, penalty={}", note.getUserId(), reputationPenalty);
+            } catch (Exception e) {
+                log.error("更新用户信誉分失败: userId={}, error={}", note.getUserId(), e.getMessage());
+            }
+            // ===== 信誉分更新结束 =====
+
         } else {
             // 审核通过处理
             note.setStatus(1);
@@ -232,6 +276,15 @@ public class ReviewAsyncTask {
 
             // 触发Feed分发（推送到粉丝收件箱）
             feedPusher.pushNote(noteId, note.getUserId());
+
+            // ===== 更新用户信誉分（审核通过加分） =====
+            try {
+                reputationService.increaseReputation(note.getUserId(), reputationBonus);
+                log.info("用户信誉分已增加: userId={}, bonus={}", note.getUserId(), reputationBonus);
+            } catch (Exception e) {
+                log.error("更新用户信誉分失败: userId={}, error={}", note.getUserId(), e.getMessage());
+            }
+            // ===== 信誉分更新结束 =====
         }
     }
 
@@ -290,9 +343,9 @@ public class ReviewAsyncTask {
             return result;
         }
 
-        /**
-         * 创建疑似违规结果（当前业务上按违规处理）
-         */
+/**
+          * 创建疑似违规结果（当前业务上按违规处理）
+          */
         public static ReviewResult suspicious(String reason, List<String> tags) {
             ReviewResult result = new ReviewResult();
             result.setPassed(false);
@@ -301,5 +354,47 @@ public class ReviewAsyncTask {
             result.setTags(tags);
             return result;
         }
+    }
+
+    /**
+     * 从违规标签提取案例类型
+     *
+     * 映射规则：
+     *   - 毒鸡汤 → toxic_soup
+     *   - 性别对立 → gender_discrimination
+     *   - 错误价值观 → incorrect_values
+     *   - 制造焦虑 → anxiety
+     *   - 消极厌世 → negative
+     *   - 极端观点 → extreme
+     *   - 伪逻辑错误 → false_logic
+     *   - 默认 → incorrect_values
+     *
+     * @param tags 违规标签列表
+     * @return 案例类型
+     */
+    private String extractCaseType(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return ViolationCaseLibrary.CASE_TYPE_INCORRECT_VALUES;
+        }
+
+        String tagStr = String.join("", tags).toLowerCase();
+
+        if (tagStr.contains("毒鸡汤") || tagStr.contains("鸡汤")) {
+            return ViolationCaseLibrary.CASE_TYPE_TOXIC_SOUP;
+        } else if (tagStr.contains("性别") || tagStr.contains("对立")) {
+            return ViolationCaseLibrary.CASE_TYPE_GENDER_DISCRIMINATION;
+        } else if (tagStr.contains("焦虑")) {
+            return ViolationCaseLibrary.CASE_TYPE_ANXIETY;
+        } else if (tagStr.contains("消极") || tagStr.contains("厌世")) {
+            return ViolationCaseLibrary.CASE_TYPE_NEGATIVE;
+        } else if (tagStr.contains("极端")) {
+            return ViolationCaseLibrary.CASE_TYPE_EXTREME;
+        } else if (tagStr.contains("逻辑") || tagStr.contains("因果")) {
+            return ViolationCaseLibrary.CASE_TYPE_FALSE_LOGIC;
+        } else if (tagStr.contains("价值观") || tagStr.contains("三观")) {
+            return ViolationCaseLibrary.CASE_TYPE_INCORRECT_VALUES;
+        }
+
+        return ViolationCaseLibrary.CASE_TYPE_INCORRECT_VALUES;
     }
 }

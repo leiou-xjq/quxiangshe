@@ -58,6 +58,70 @@ services:
       timeout: 5s
       retries: 5
 
+  # Milvus向量数据库依赖服务
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: lixiang-etcd
+    restart: unless-stopped
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: lixiang-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    command: minio server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Milvus向量数据库服务 (RAG违规案例检索)
+  milvus:
+    image: milvusdb/milvus:v2.3.3
+    container_name: lixiang-milvus
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus-data:/var/lib/milvus
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -86,6 +150,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      milvus:
+        condition: service_healthy
 
   frontend:
     build:
@@ -105,3 +171,6 @@ volumes:
   mysql_data:
   redis_data:
   rabbitmq_data:
+  etcd_data:
+  minio-data:
+  milvus-data:
