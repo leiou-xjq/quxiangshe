@@ -1,76 +1,108 @@
 # 理享 - 校园社交平台
 
-基于 Spring Boot + Vue 3 的校园社交平台，支持笔记分享、互动社交、Feed流推荐等功能。
+基于 Spring Boot + Vue 3 的校园社交平台，支持笔记分享、互动社交、Feed流推荐、AI内容审核等功能。
 
-## 技术栈
+## 核心技术栈
 
 ### 后端
-- **框架**: Spring Boot 3.2 + Spring Security
-- **ORM**: MyBatis-Plus 3.5
-- **数据库**: MySQL 8.0
-- **缓存**: Redis 7 + Redisson + Caffeine
-- **消息队列**: RabbitMQ 3.12
-- **实时通信**: WebSocket
-- **API文档**: Knife4j
+| 技术 | 说明 |
+|------|------|
+| Spring Boot 3.2 | 核心框架 |
+| MyBatis-Plus 3.5 | ORM框架 |
+| MySQL 8.0 | 主数据库 |
+| Redis 7 + Redisson | 分布式缓存/锁 |
+| Caffeine | 本地缓存 |
+| RabbitMQ 3.12 | 消息队列 |
+| Milvus 2.3 | 向量数据库 |
+| WebSocket | 实时通信 |
+
+### AI服务
+| 技术 | 说明 |
+|------|------|
+| 豆包大模型 | 内容审核、价值观判断 |
+| Milvus | RAG向量检索 |
+| Embedding | 文本向量化 |
 
 ### 前端
-- **框架**: Vue 3 + Composition API
-- **构建工具**: Vite
-- **UI组件**: Element Plus
-- **状态管理**: Pinia
-- **路由**: Vue Router
+Vue 3 + Vite + Element Plus + Pinia
 
-### 中间件
-- **对象存储**: 阿里云 OSS
-- **短信服务**: 腾讯云 SMS
-- **AI服务**: 豆包大模型 (字节跳动)
-- **向量库**: Milvus
+## 核心功能特性
 
-## 功能特性
+### 内容发布与社交
+- 笔记发布（图片/视频）
+- 点赞、评论、收藏、转发
+- 关注/粉丝系统
+- 私信聊天
+- 黑名单管理
 
-### 用户系统
-- ✅ 邮箱注册/登录
-- ✅ JWT 认证
-- ✅ 微信登录 (可选)
-- ✅ 用户资料管理
-- ✅ 密码修改/重置
+### 智能Feed流分发
+| 博主类型 | 策略 | 说明 |
+|----------|------|------|
+| 小博主 (<1K粉) | PUSH直推 | 直接写入粉丝收件箱 |
+| 中博主 (1K-10W粉) | PULL拉取 | 写入发件箱，粉丝读取时合并 |
+| 大博主 (>10W粉) | HYBRID混合 | 活跃粉丝PUSH，普通粉丝PULL |
 
-### 社交功能
-- ✅ 笔记发布 (支持图片/视频)
-- ✅ 点赞/评论/收藏/转发
-- ✅ 关注/粉丝系统
-- ✅ 私信聊天
-- ✅ 黑名单
+### AI内容审核（三层递进）
+```
+┌─────────────────────────────────────────────────────────┐
+│                    L1: 敏感词检测                        │
+│                    关键词/正则匹配，即时返回               │
+└─────────────────────────┬─────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│                 L2: RAG向量案例匹配                       │
+│    Milvus向量库检索Top5相似违规案例，辅助LLM判断          │
+└─────────────────────────┬─────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│                 L3: LLM价值观审核                        │
+│     豆包大模型，结合24字核心价值观+论语五常综合判定       │
+└─────────────────────────────────────────────────────────┘
+```
 
-### 内容生态
-- ✅ Feed流推荐 (推拉结合)
-- ✅ 热门内容计算
-- ✅ 搜索功能
-- ✅ AI内容审核 (RAG+LLM三层递进)
-- ✅ 视频转码处理
+### 用户信誉分体系
+| 操作 | 分数变化 |
+|------|---------|
+| 审核通过 | +2分 |
+| 审核违规 | -5分 |
+| 举报核实 | -10分 |
 
-### 系统特性
-- ✅ 异步通知 (MQ)
-- ✅ WebSocket实时推送
-- ✅ 接口限流
-- ✅ 多级缓存
-- ✅ 反作弊检测
+```
+信誉分 >= 80 → 同步审核（快速通道）
+信誉分 < 80 → 异步审核（普通模式）
+```
 
-## 快速部署 (Docker Compose)
+**缓存策略**：Redis缓存(TTL=1h) → DB为真相源 → 定时校正
+
+### 热点内容计算
+```
+hotScore = like×1 + comment×2 + favorite×3 + forward×5
+每日0.9衰减，避免老笔记霸榜
+```
+
+## 高并发设计
+
+| 优化手段 | 说明 |
+|---------|------|
+| 多级缓存 | Caffeine(L1) + Redis(L2) |
+| 计数分离 | Redis原子计数 + 异步DB同步 |
+| 线程池隔离 | 推送/审核/分发三池分离 |
+| 分布式锁 | Redisson + Lua脚本原子操作 |
+| MQ异步解耦 | 审核、转码、通知异步处理 |
+
+## 快速部署
 
 ### 前置要求
-
 - Docker 20.10+
 - Docker Compose 2.0+
 
 ### 部署步骤
-
 ```bash
 # 1. 克隆项目
-git clone https://github.com/leiou-xjq/lixiang.git
-cd lixiang
+git clone https://github.com/leiou-xjq/quxiangshe.git
+cd quxiangshe
 
-# 2. 复制环境配置
+# 2. 复制并配置环境变量
 cp .env.example .env
 # 编辑 .env 填入真实配置
 
@@ -80,73 +112,87 @@ docker-compose up -d
 # 4. 查看服务状态
 docker-compose ps
 
-# 5. 查看日志
+# 5. 查看后端日志
 docker-compose logs -f backend
 ```
 
-### 访问服务
-
+### 服务访问地址
 | 服务 | 地址 |
 |------|------|
 | 前端Web | http://localhost |
 | 后端API | http://localhost:8080/api |
 | API文档 | http://localhost:8080/api/doc.html |
 | RabbitMQ | http://localhost:15672 (admin/admin123) |
+| Milvus | http://localhost:9091 |
 
-## 环境变量
+## 环境变量说明
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| MYSQL_PASSWORD | MySQL密码 | quxiangshe123 |
-| REDIS_PASSWORD | Redis密码 | quxiangshe123 |
-| JWT_SECRET | JWT密钥 (至少32位) | - |
-| MAIL_USERNAME | 邮箱地址 | - |
-| MAIL_PASSWORD | 邮箱授权码 | - |
+```bash
+# 数据库
+MYSQL_PASSWORD=your-mysql-password
 
-完整环境变量列表请参考 `.env.example`。
+# Redis
+REDIS_PASSWORD=your-redis-password
 
-## 目录结构
+# JWT
+JWT_SECRET=your-jwt-secret-at-least-32-chars
+
+# 豆包大模型 (内容审核)
+DOUBAO_API_KEY=your-api-key
+DOUBAO_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+
+# 信誉分阈值 (默认80分走同步审核)
+REVIEW_SYNC_THRESHOLD=80
+
+# RAG功能开关
+RAG_ENABLED=true
+```
+
+## 项目结构
 
 ```
-lixiang/
+quxiangshe/
 ├── backend/
 │   ├── src/main/java/com/quxiangshe/backend/
-│   │   ├── config/          # 配置类
-│   │   ├── controller/      # 控制器
+│   │   ├── config/         # 配置类 (Redis/RabbitMQ/Milvus)
+│   │   ├── controller/      # REST控制器
 │   │   ├── service/        # 服务层
+│   │   │   └── impl/      # 服务实现
 │   │   ├── entity/         # 实体类
-│   │   ├── mapper/         # MyBatis映射
-│   │   ├── consumer/       # MQ消费者
-│   │   ├── scheduler/      # 定时任务
-│   │   └── util/           # 工具类
+│   │   ├── mapper/        # MyBatis Mapper
+│   │   ├── consumer/      # MQ消费者
+│   │   ├── scheduler/     # 定时任务
+│   │   ├── task/         # 异步任务
+│   │   └── util/         # 工具类
 │   └── src/main/resources/
-│       └── application.yml
-├── frontend/
-│   ├── src/
-│   │   ├── api/           # API请求
-│   │   ├── views/         # 页面组件
-│   │   ├── components/    # 通用组件
-│   │   ├── stores/        # Pinia状态
-│   │   └── router/        # 路由配置
-│   └── package.json
-├── docker-compose.yml
-├── .env.example
+│       ├── application.yml
+│       └── db/migration/  # Flyway数据库迁移
+├── frontend/               # Vue 3前端
+├── docker-compose.yml      # 容器编排
+├── .env.example          # 环境变量模板
 └── README.md
 ```
 
-## 本地开发
+## 数据库迁移
 
-### 后端
-
-```bash
-cd backend
-mvn clean package -DskipTests
-java -jar target/lixiang-backend-1.0.0.jar
+项目使用Flyway管理数据库版本，迁移脚本位于：
+```
+backend/src/main/resources/db/migration/
 ```
 
-### 前端
+**重要迁移**：
+- V9: 创建违规案例库表 (violation_case_library)
+- V10: 添加用户信誉分字段 (reputation_score)
+
+## 本地开发
 
 ```bash
+# 后端
+cd backend
+mvn clean compile
+mvn spring-boot:run
+
+# 前端
 cd frontend
 npm install
 npm run dev
@@ -154,44 +200,7 @@ npm run dev
 
 ## API文档
 
-启动后端后访问: http://localhost:8080/api/doc.html
-
-## 技术文档
-
-详细设计文档请参考：
-
-- [Feed流分发系统设计](docs/feed-design.md)
-- [多级缓存架构设计](docs/cache-design.md)
-- [消息队列设计](docs/mq-design.md)
-- [热点笔记排序设计](docs/hot-score-design.md)
-
-## 性能优化
-
-1. **多级缓存**: Redis + Caffeine本地缓存
-2. **异步处理**: RabbitMQ异步通知、转码、审核
-3. **Feed流优化**: 推拉结合模式 + 粉丝分层
-4. **数据库**: 合理索引 + 读写分离
-5. **分布式锁**: Redisson实现
-
-## 核心架构设计
-
-### AI内容审核三层架构
-```
-用户提交 → 敏感词检测 → RAG案例匹配 → LLM价值观判断
-```
-
-### Feed智能分发
-```
-小博主(<1K粉): PUSH直推
-中博主(1K-10W粉): PULL拉取
-大博主(>10W粉): HYBRID混合模式
-```
-
-### 热点计算
-```
-hotScore = like×1 + comment×2 + favorite×3 + forward×5
-每日0.9衰减，防止老笔记霸榜
-```
+启动后端后访问：http://localhost:8080/api/doc.html
 
 ## 许可证
 
